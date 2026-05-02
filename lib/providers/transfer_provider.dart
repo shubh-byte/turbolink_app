@@ -1,13 +1,23 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../backend/models/transfer.dart';
-import '../core/di/service_locator.dart';
+import '../backend/services/transfer_service.dart';
+import '../backend/mock/mock_transfer_service.dart';
+import '../backend/services/native_transfer_service.dart';
+import 'mock_mode_provider.dart';
 
-/// Provides the stream of all transfers (active + completed).
+/// Provides the active TransferService instance (Demo vs Release).
+final transferServiceProvider = Provider<TransferService>((ref) {
+  final isMock = ref.watch(mockModeProvider);
+  return isMock ? MockTransferService() : NativeTransferService();
+});
+
+/// Provides the stream of all transfers (active + completed) based on active mode.
 final transfersStreamProvider = StreamProvider<List<Transfer>>((ref) {
-  // If the service needs explicit cleanup of listeners, add it here.
-  // For the mock, we don't have a stop method, but we add the hook for QA readiness.
+  final service = ref.watch(transferServiceProvider);
+
   ref.onDispose(() {
-    // ServiceLocator().transferService.dispose(); 
+    // service.dispose(); if needed
   });
-  return ServiceLocator().transferService.getTransfers();
+  
+  return service.getTransfers();
 });

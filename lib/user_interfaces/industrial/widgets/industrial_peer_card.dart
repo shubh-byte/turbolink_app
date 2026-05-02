@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../backend/models/peer.dart';
-import '../core/theme/app_theme.dart';
+import '../../../backend/models/peer.dart';
+import '../../../core/theme/app_theme.dart';
 
 /// A single peer device card shown in the list view below the radar.
 ///
@@ -37,6 +37,7 @@ class PeerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final colors = AppTheme.colors(context);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -46,11 +47,11 @@ class PeerCard extends StatelessWidget {
         vertical: AppTheme.spacingXs,
       ),
       decoration: BoxDecoration(
-        color: peer.isConnected ? AppTheme.cyan.withValues(alpha: 0.1) : Theme.of(context).cardTheme.color,
+        color: peer.isConnected ? colors.primaryGlow.withValues(alpha: 0.1) : Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(
           color: peer.isConnected
-              ? AppTheme.cyan.withValues(alpha: 0.3)
+              ? colors.primaryGlow.withValues(alpha: 0.3)
               : Theme.of(context).dividerColor,
           width: peer.isConnected ? 1.0 : 0.5,
         ),
@@ -70,14 +71,14 @@ class PeerCard extends StatelessWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     color: peer.isConnected
-                        ? AppTheme.cyan.withValues(alpha: 0.15)
+                        ? colors.primaryGlow.withValues(alpha: 0.15)
                         : Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                   ),
                   child: Icon(
                     _deviceIcon,
                     color: peer.isConnected
-                        ? AppTheme.cyan
+                        ? colors.primaryGlow
                         : Theme.of(context).iconTheme.color,
                     size: 22,
                   ),
@@ -93,30 +94,30 @@ class PeerCard extends StatelessWidget {
                         peer.name,
                         style: tt.titleMedium?.copyWith(
                           color: peer.isConnected
-                              ? AppTheme.cyan
+                              ? colors.primaryGlow
                               : Theme.of(context).colorScheme.onSurface,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 6),
-                      _SignalBar(strength: peer.signalStrength),
+                      _SignalBar(strength: peer.signalStrength, activeColor: colors.primaryGlow),
                     ],
                   ),
                 ),
 
                 // Action button.
                 if (isConnecting)
-                  const _HUDLoader()
+                  _HUDLoader(color: colors.primaryGlow)
                 else if (peer.isConnected)
                   _ActionChip(
                     label: 'SEND',
-                    color: AppTheme.amber,
+                    color: colors.secondaryGlow,
                     onTap: onSendFile,
                   )
                 else
                   _ActionChip(
                     label: 'LINK',
-                    color: AppTheme.cyan,
+                    color: colors.primaryGlow,
                     onTap: onConnect,
                   ),
               ],
@@ -130,7 +131,8 @@ class PeerCard extends StatelessWidget {
 
 /// Custom HUD-themed loader for connecting state.
 class _HUDLoader extends StatefulWidget {
-  const _HUDLoader();
+  final Color color;
+  const _HUDLoader({required this.color});
 
   @override
   State<_HUDLoader> createState() => _HUDLoaderState();
@@ -165,7 +167,7 @@ class _HUDLoaderState extends State<_HUDLoader> with SingleTickerProviderStateMi
           child: CustomPaint(
             painter: _HUDLoaderPainter(
               progress: _controller.value,
-              color: AppTheme.cyan,
+              color: widget.color,
             ),
           ),
         );
@@ -217,7 +219,9 @@ class _HUDLoaderPainter extends CustomPainter {
 /// Tiny signal strength bar: 5 segments that fill based on [strength].
 class _SignalBar extends StatelessWidget {
   final double strength;
-  const _SignalBar({required this.strength});
+  final Color activeColor;
+  
+  const _SignalBar({required this.strength, required this.activeColor});
 
   @override
   Widget build(BuildContext context) {
@@ -231,7 +235,7 @@ class _SignalBar extends StatelessWidget {
           margin: const EdgeInsets.only(right: 2),
           decoration: BoxDecoration(
             color: active
-                ? AppTheme.cyan.withValues(alpha: 0.8)
+                ? activeColor.withValues(alpha: 0.8)
                 : Theme.of(context).dividerColor,
             borderRadius: BorderRadius.circular(1),
           ),

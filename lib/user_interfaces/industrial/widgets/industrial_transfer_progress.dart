@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../backend/models/transfer.dart';
-import '../core/theme/app_theme.dart';
+import '../../../backend/models/transfer.dart';
+import '../../../core/theme/app_theme.dart';
 
 /// A single transfer progress card with an arc progress indicator,
 /// speed readout, and file metadata.
@@ -15,29 +15,31 @@ class TransferProgressCard extends StatelessWidget {
     this.onCancel,
   });
 
-  Color get _statusColor {
+  Color _statusColor(BuildContext context) {
+    final colors = AppTheme.colors(context);
     switch (transfer.status) {
       case TransferStatus.active:
-        return AppTheme.amber;
+        return colors.secondaryGlow;
       case TransferStatus.completed:
-        return AppTheme.green;
+        return colors.success;
       case TransferStatus.failed:
-        return AppTheme.red;
+        return colors.error;
       case TransferStatus.queued:
-        return AppTheme.textTertiary;
+        return Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
     }
   }
 
-  Color get _statusBgColor {
+  Color _statusBgColor(BuildContext context) {
+    final colors = AppTheme.colors(context);
     switch (transfer.status) {
       case TransferStatus.active:
-        return AppTheme.amberDim;
+        return colors.secondaryGlowDim;
       case TransferStatus.completed:
-        return AppTheme.cyanDim;
+        return colors.primaryGlowDim;
       case TransferStatus.failed:
-        return AppTheme.redDim;
+        return colors.errorDim;
       case TransferStatus.queued:
-        return AppTheme.surfaceElevated;
+        return Theme.of(context).cardTheme.color!;
     }
   }
 
@@ -63,6 +65,9 @@ class TransferProgressCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
+    final color = _statusColor(context);
+    final bgColor = _statusBgColor(context);
+    final colors = AppTheme.colors(context);
 
     return Container(
       margin: const EdgeInsets.symmetric(
@@ -70,10 +75,10 @@ class TransferProgressCard extends StatelessWidget {
         vertical: AppTheme.spacingXs,
       ),
       decoration: BoxDecoration(
-        color: _statusBgColor,
+        color: bgColor,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(
-          color: _statusColor.withValues(alpha: 0.2),
+          color: color.withValues(alpha: 0.2),
           width: 0.5,
         ),
       ),
@@ -88,12 +93,12 @@ class TransferProgressCard extends StatelessWidget {
               child: CustomPaint(
                 painter: _ArcProgressPainter(
                   progress: transfer.progress,
-                  color: _statusColor,
+                  color: color,
                 ),
                 child: Center(
                   child: Icon(
                     _directionIcon,
-                    color: _statusColor,
+                    color: color,
                     size: 18,
                   ),
                 ),
@@ -123,7 +128,7 @@ class TransferProgressCard extends StatelessWidget {
                         Text(
                           transfer.speedFormatted,
                           style: tt.labelLarge?.copyWith(
-                            color: AppTheme.amber,
+                            color: colors.secondaryGlow,
                             fontSize: 11,
                           ),
                         ),
@@ -149,13 +154,13 @@ class TransferProgressCard extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: _statusColor.withValues(alpha: 0.15),
+                    color: color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     _statusLabel,
                     style: tt.labelSmall?.copyWith(
-                      color: _statusColor,
+                      color: color,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.5,
                     ),
@@ -166,10 +171,10 @@ class TransferProgressCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   GestureDetector(
                     onTap: onCancel,
-                    child: const Icon(
+                    child: Icon(
                       Icons.close_rounded,
                       size: 18,
-                      color: AppTheme.textTertiary,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                   ),
                 ],

@@ -1,58 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../providers/ui_theme_provider.dart';
+import 'turbo_colors.dart';
 
-/// TurboLink design system.
-///
-/// Aesthetic direction: Dark industrial-tech. The vibe is a military-grade
-/// file transfer tool — deep charcoal surfaces, electric cyan for active
-/// connections, warm amber for transfer activity, and crisp typography
-/// that feels like reading a cockpit HUD.
+/// TurboLink multi-aesthetic design system.
 class AppTheme {
   AppTheme._();
 
-  // ── Core palette ─────────────────────────────────────────────────────
-  static const Color surface = Color(0xFF0D0D0F);        // Near-black base
-  static const Color surfaceAlt = Color(0xFF161619);      // Card surfaces
-  static const Color surfaceElevated = Color(0xFF1E1E23); // Elevated panels
-  static const Color border = Color(0xFF2A2A32);          // Subtle borders
-  static const Color textPrimary = Color(0xFFF0EDE6);     // Warm off-white
-  static const Color textSecondary = Color(0xFF8A8690);   // Muted lavender-grey
-  static const Color textTertiary = Color(0xFF5A5660);    // Very muted
-
-  // ── Accent colors ────────────────────────────────────────────────────
-  static const Color cyan = Color(0xFF00E5CC);            // Active/connected
-  static const Color cyanDim = Color(0xFF0A3D37);         // Cyan background glow
-  static const Color amber = Color(0xFFFFAA2B);           // Transfer/activity
-  static const Color amberDim = Color(0xFF3D2E0A);        // Amber background glow
-  static const Color red = Color(0xFFFF4D6A);             // Error/failed
-  static const Color redDim = Color(0xFF3D0A1A);          // Error background
-  static const Color green = Color(0xFF2EE67A);           // Success/completed
-
-  // ── Radar-specific colors ────────────────────────────────────────────
-  static const Color radarRing = Color(0xFF1A3A38);       // Dim ring stroke
-  static const Color radarSweep = Color(0xFF00E5CC);      // Sweep line
-  static const Color radarDot = Color(0xFF00E5CC);        // Peer dot
-
-  // ── Gradients ────────────────────────────────────────────────────────
-  static const LinearGradient cyanGradient = LinearGradient(
-    colors: [Color(0xFF00E5CC), Color(0xFF00B4D8)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const LinearGradient amberGradient = LinearGradient(
-    colors: [Color(0xFFFFAA2B), Color(0xFFFF6B2B)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const LinearGradient surfaceGradient = LinearGradient(
-    colors: [Color(0xFF0D0D0F), Color(0xFF141418)],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-  );
-
-  // ── Spacing ──────────────────────────────────────────────────────────
   static const double spacingXs = 4.0;
   static const double spacingSm = 8.0;
   static const double spacingMd = 16.0;
@@ -60,34 +14,176 @@ class AppTheme {
   static const double spacingXl = 32.0;
   static const double spacingXxl = 48.0;
 
-  // ── Border radius ────────────────────────────────────────────────────
   static const double radiusSm = 8.0;
   static const double radiusMd = 12.0;
   static const double radiusLg = 16.0;
   static const double radiusXl = 24.0;
 
-  // ── Theme data ───────────────────────────────────────────────────────
-  static ThemeData get darkTheme {
+  /// Returns the helper colors for gradients, etc.
+  static TurboColors colors(BuildContext context) {
+    return Theme.of(context).extension<TurboColors>()!;
+  }
+
+  static ThemeData getTheme(UIAesthetic aesthetic, Brightness brightness) {
+    switch (aesthetic) {
+      case UIAesthetic.industrial:
+        return _buildIndustrialTheme(brightness);
+      case UIAesthetic.cyberpunk:
+        return _buildCyberpunkTheme(brightness);
+      case UIAesthetic.ocean:
+        return _buildOceanTheme(brightness);
+      case UIAesthetic.minimalist:
+        return _buildMinimalistTheme(brightness);
+    }
+  }
+
+  // ── Industrial Tech (The original, but refined) ──────────────────────────
+  static ThemeData _buildIndustrialTheme(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final surface = isDark ? const Color(0xFF0D0D0F) : const Color(0xFFF2F4F7);
+    final surfaceAlt = isDark ? const Color(0xFF161619) : const Color(0xFFFFFFFF);
+    final border = isDark ? const Color(0xFF2A2A32) : const Color(0xFFD1D1D6);
+    final textPrimary = isDark ? const Color(0xFFF0EDE6) : const Color(0xFF090A0B);
+    final textSecondary = isDark ? const Color(0xFF8A8690) : const Color(0xFF6B7280);
+    
+    final primary = isDark ? const Color(0xFF00E5CC) : const Color(0xFF1A4BFF); // Cyan / Ultramarine
+    final secondary = isDark ? const Color(0xFFFFAA2B) : const Color(0xFFFF5500); // Amber / Orange
+
+    final turboColors = TurboColors(
+      primaryGlow: primary,
+      primaryGlowDim: isDark ? const Color(0xFF0A3D37) : primary.withValues(alpha: 0.15),
+      secondaryGlow: secondary,
+      secondaryGlowDim: isDark ? const Color(0xFF3D2E0A) : secondary.withValues(alpha: 0.15),
+      radarRing: isDark ? const Color(0xFF1A3A38) : const Color(0xFFE5E7EB),
+      radarSweep: primary,
+      success: const Color(0xFF2EE67A),
+      error: const Color(0xFFFF4D6A),
+      errorDim: isDark ? const Color(0xFF3D0A1A) : const Color(0xFFFF4D6A).withValues(alpha: 0.1),
+    );
+
+    return _buildBaseTheme(brightness, surface, surfaceAlt, border, textPrimary, textSecondary, primary, secondary, turboColors, GoogleFonts.unbounded(), GoogleFonts.sourceCodePro());
+  }
+
+  // ── Cyberpunk (Neon maximalism) ──────────────────────────────────────────
+  static ThemeData _buildCyberpunkTheme(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final surface = isDark ? const Color(0xFF050511) : const Color(0xFFFAFAFA);
+    final surfaceAlt = isDark ? const Color(0xFF0A0A1F) : const Color(0xFFFFFFFF);
+    final border = isDark ? const Color(0xFF2E004F) : const Color(0xFFE0E0E0);
+    final textPrimary = isDark ? const Color(0xFFFF003C) : const Color(0xFF111111); // Neon Red / Pitch Black
+    final textSecondary = isDark ? const Color(0xFFB188CE) : const Color(0xFF555555);
+    
+    final primary = isDark ? const Color(0xFF00FFCC) : const Color(0xFFFF0055); // Neon Teal / Hot Pink
+    final secondary = isDark ? const Color(0xFFFCEE09) : const Color(0xFF7000FF); // Cyber Yellow / Electric Purple
+
+    final turboColors = TurboColors(
+      primaryGlow: primary,
+      primaryGlowDim: primary.withValues(alpha: 0.2),
+      secondaryGlow: secondary,
+      secondaryGlowDim: secondary.withValues(alpha: 0.2),
+      radarRing: isDark ? const Color(0xFF1A0A2E) : const Color(0xFFEEEEEE),
+      radarSweep: primary,
+      success: const Color(0xFF00FF41),
+      error: const Color(0xFFFF003C),
+      errorDim: const Color(0xFFFF003C).withValues(alpha: 0.2),
+    );
+
+    return _buildBaseTheme(brightness, surface, surfaceAlt, border, textPrimary, textSecondary, primary, secondary, turboColors, GoogleFonts.rajdhani(), GoogleFonts.shareTechMono());
+  }
+
+  // ── Ocean Depths (Professional & Calming) ────────────────────────────────
+  static ThemeData _buildOceanTheme(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final surface = isDark ? const Color(0xFF02101D) : const Color(0xFFF0F8FF);
+    final surfaceAlt = isDark ? const Color(0xFF061A2E) : const Color(0xFFFFFFFF);
+    final border = isDark ? const Color(0xFF0F3255) : const Color(0xFFB8D8F0);
+    final textPrimary = isDark ? const Color(0xFFE6F3FF) : const Color(0xFF002244);
+    final textSecondary = isDark ? const Color(0xFF7B9EBF) : const Color(0xFF4A7094);
+    
+    final primary = isDark ? const Color(0xFF00A2FF) : const Color(0xFF0066CC); // Cerulean
+    final secondary = isDark ? const Color(0xFF4EE6B1) : const Color(0xFF009966); // Seafoam
+
+    final turboColors = TurboColors(
+      primaryGlow: primary,
+      primaryGlowDim: primary.withValues(alpha: 0.2),
+      secondaryGlow: secondary,
+      secondaryGlowDim: secondary.withValues(alpha: 0.2),
+      radarRing: isDark ? const Color(0xFF062340) : const Color(0xFFD6EAF8),
+      radarSweep: primary,
+      success: const Color(0xFF00CC99),
+      error: const Color(0xFFFF6B6B),
+      errorDim: const Color(0xFFFF6B6B).withValues(alpha: 0.2),
+    );
+
+    return _buildBaseTheme(brightness, surface, surfaceAlt, border, textPrimary, textSecondary, primary, secondary, turboColors, GoogleFonts.outfit(), GoogleFonts.dmSans());
+  }
+
+  // ── Minimalist (Clean grayscale) ──────────────────────────────────────────
+  static ThemeData _buildMinimalistTheme(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final surface = isDark ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
+    final surfaceAlt = isDark ? const Color(0xFF111111) : const Color(0xFFF9F9F9);
+    final border = isDark ? const Color(0xFF222222) : const Color(0xFFEAEAEA);
+    final textPrimary = isDark ? const Color(0xFFFFFFFF) : const Color(0xFF000000);
+    final textSecondary = isDark ? const Color(0xFF888888) : const Color(0xFF666666);
+    
+    final primary = isDark ? const Color(0xFFFFFFFF) : const Color(0xFF000000); 
+    final secondary = isDark ? const Color(0xFFAAAAAA) : const Color(0xFF555555);
+
+    final turboColors = TurboColors(
+      primaryGlow: primary,
+      primaryGlowDim: primary.withValues(alpha: 0.1),
+      secondaryGlow: secondary,
+      secondaryGlowDim: secondary.withValues(alpha: 0.1),
+      radarRing: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF0F0F0),
+      radarSweep: primary,
+      success: isDark ? const Color(0xFFDDDDDD) : const Color(0xFF333333),
+      error: isDark ? const Color(0xFF666666) : const Color(0xFF999999),
+      errorDim: isDark ? const Color(0xFF222222) : const Color(0xFFEEEEEE),
+    );
+
+    return _buildBaseTheme(brightness, surface, surfaceAlt, border, textPrimary, textSecondary, primary, secondary, turboColors, GoogleFonts.inter(), GoogleFonts.inter());
+  }
+
+  // ── Base Theme Constructor ───────────────────────────────────────────────
+  static ThemeData _buildBaseTheme(
+    Brightness brightness, 
+    Color surface, 
+    Color surfaceAlt, 
+    Color border, 
+    Color textPrimary, 
+    Color textSecondary,
+    Color primary,
+    Color secondary,
+    TurboColors turboColors,
+    TextStyle displayFont,
+    TextStyle bodyFont,
+  ) {
+    final textTheme = _buildTextTheme(textPrimary, textSecondary, primary, displayFont, bodyFont);
+
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
+      brightness: brightness,
       scaffoldBackgroundColor: surface,
-      colorScheme: const ColorScheme.dark(
+      extensions: [turboColors],
+      colorScheme: ColorScheme(
+        brightness: brightness,
+        primary: primary,
+        onPrimary: brightness == Brightness.dark ? Colors.black : Colors.white,
+        secondary: secondary,
+        onSecondary: brightness == Brightness.dark ? Colors.black : Colors.white,
+        error: turboColors.error,
+        onError: Colors.white,
         surface: surface,
-        primary: cyan,
-        secondary: amber,
-        error: red,
         onSurface: textPrimary,
-        onPrimary: surface,
-        onSecondary: surface,
       ),
-      textTheme: _buildTextTheme(Brightness.dark),
+      textTheme: textTheme,
       cardTheme: CardThemeData(
         color: surfaceAlt,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusMd),
-          side: const BorderSide(color: border, width: 0.5),
+          side: BorderSide(color: border, width: 0.8),
         ),
       ),
       appBarTheme: AppBarTheme(
@@ -95,202 +191,65 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.unbounded(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
+        titleTextStyle: displayFont.copyWith(
           color: textPrimary,
-          letterSpacing: 0.5,
-        ),
-      ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: surfaceAlt,
-        selectedItemColor: cyan,
-        unselectedItemColor: textTertiary,
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
-      ),
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: surfaceAlt,
-        indicatorColor: cyanDim,
-        surfaceTintColor: Colors.transparent,
-        labelTextStyle: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return GoogleFonts.sourceCodePro(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: cyan,
-              letterSpacing: 1.2,
-            );
-          }
-          return GoogleFonts.sourceCodePro(
-            fontSize: 11,
-            fontWeight: FontWeight.w400,
-            color: textTertiary,
-            letterSpacing: 1.0,
-          );
-        }),
-      ),
-      iconTheme: const IconThemeData(color: textSecondary, size: 22),
-      dividerColor: border,
-    );
-  }
-
-  static ThemeData get lightTheme {
-    const Color lightSurface = Color(0xFFF5F5F7);
-    const Color lightSurfaceAlt = Color(0xFFFFFFFF);
-    const Color lightBorder = Color(0xFFD1D1D6);
-    const Color lightTextPrimary = Color(0xFF1D1D1F);
-    const Color lightTextSecondary = Color(0xFF86868B);
-    const Color lightNavy = Color(0xFF001D3D);
-
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      scaffoldBackgroundColor: lightSurface,
-      colorScheme: const ColorScheme.light(
-        surface: lightSurface,
-        primary: cyan,
-        secondary: amber,
-        error: red,
-        onSurface: lightTextPrimary,
-        onPrimary: lightSurfaceAlt,
-        onSecondary: lightSurfaceAlt,
-      ),
-      textTheme: _buildTextTheme(Brightness.light),
-      cardTheme: CardThemeData(
-        color: lightSurfaceAlt,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          side: const BorderSide(color: lightBorder, width: 0.8),
-        ),
-      ),
-      appBarTheme: AppBarTheme(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: false,
-        titleTextStyle: GoogleFonts.unbounded(
           fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: lightTextPrimary,
+          fontWeight: FontWeight.w700,
           letterSpacing: 0.5,
         ),
       ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: lightSurfaceAlt,
-        selectedItemColor: cyan,
-        unselectedItemColor: lightTextSecondary,
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: surfaceAlt,
+        selectedItemColor: primary,
+        unselectedItemColor: textSecondary,
         type: BottomNavigationBarType.fixed,
         elevation: 4,
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: lightSurfaceAlt,
-        indicatorColor: cyan.withValues(alpha: 0.1),
+        backgroundColor: surfaceAlt,
+        indicatorColor: turboColors.primaryGlowDim,
         surfaceTintColor: Colors.transparent,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return GoogleFonts.sourceCodePro(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: lightNavy,
+            return bodyFont.copyWith(
+              color: primary,
+              fontWeight: FontWeight.w700,
               letterSpacing: 1.2,
             );
           }
-          return GoogleFonts.sourceCodePro(
-            fontSize: 11,
-            fontWeight: FontWeight.w400,
-            color: lightTextSecondary,
+          return bodyFont.copyWith(
+            color: textSecondary,
+            fontWeight: FontWeight.w500,
             letterSpacing: 1.0,
           );
         }),
       ),
-      iconTheme: const IconThemeData(color: lightTextSecondary, size: 22),
-      dividerColor: lightBorder,
+      iconTheme: IconThemeData(color: textPrimary, size: 22),
+      dividerColor: border,
     );
   }
 
-  static TextTheme _buildTextTheme(Brightness brightness) {
-    final Color primary = brightness == Brightness.dark ? textPrimary : const Color(0xFF1D1D1F);
-    final Color secondary = brightness == Brightness.dark ? textSecondary : const Color(0xFF86868B);
-    final Color tertiary = brightness == Brightness.dark ? textTertiary : const Color(0xFFA1A1A6);
-
+  static TextTheme _buildTextTheme(
+    Color primary, 
+    Color secondary, 
+    Color accent,
+    TextStyle displayFont,
+    TextStyle bodyFont,
+  ) {
     return TextTheme(
-      displayLarge: GoogleFonts.unbounded(
-        fontSize: 36,
-        fontWeight: FontWeight.w700,
-        color: primary,
-        letterSpacing: -0.5,
-      ),
-      displayMedium: GoogleFonts.unbounded(
-        fontSize: 28,
-        fontWeight: FontWeight.w600,
-        color: primary,
-        letterSpacing: 0,
-      ),
-      headlineLarge: GoogleFonts.unbounded(
-        fontSize: 22,
-        fontWeight: FontWeight.w600,
-        color: primary,
-        letterSpacing: 0.5,
-      ),
-      headlineMedium: GoogleFonts.unbounded(
-        fontSize: 18,
-        fontWeight: FontWeight.w500,
-        color: primary,
-        letterSpacing: 0.3,
-      ),
-      titleLarge: GoogleFonts.unbounded(
-        fontSize: 15,
-        fontWeight: FontWeight.w500,
-        color: primary,
-        letterSpacing: 0.5,
-      ),
-      titleMedium: GoogleFonts.sourceCodePro(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-        color: primary,
-        letterSpacing: 0.3,
-      ),
-      titleSmall: GoogleFonts.sourceCodePro(
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-        color: secondary,
-        letterSpacing: 0.5,
-      ),
-      bodyLarge: GoogleFonts.sourceCodePro(
-        fontSize: 14,
-        fontWeight: FontWeight.w400,
-        color: primary,
-      ),
-      bodyMedium: GoogleFonts.sourceCodePro(
-        fontSize: 13,
-        fontWeight: FontWeight.w400,
-        color: secondary,
-      ),
-      bodySmall: GoogleFonts.sourceCodePro(
-        fontSize: 11,
-        fontWeight: FontWeight.w400,
-        color: tertiary,
-      ),
-      labelLarge: GoogleFonts.sourceCodePro(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: cyan,
-        letterSpacing: 1.5,
-      ),
-      labelMedium: GoogleFonts.sourceCodePro(
-        fontSize: 11,
-        fontWeight: FontWeight.w500,
-        color: secondary,
-        letterSpacing: 1.0,
-      ),
-      labelSmall: GoogleFonts.sourceCodePro(
-        fontSize: 10,
-        fontWeight: FontWeight.w400,
-        color: tertiary,
-        letterSpacing: 1.2,
-      ),
+      displayLarge: displayFont.copyWith(fontSize: 36, fontWeight: FontWeight.w700, color: primary, letterSpacing: -0.5),
+      displayMedium: displayFont.copyWith(fontSize: 28, fontWeight: FontWeight.w600, color: primary),
+      headlineLarge: displayFont.copyWith(fontSize: 22, fontWeight: FontWeight.w600, color: primary, letterSpacing: 0.5),
+      headlineMedium: displayFont.copyWith(fontSize: 18, fontWeight: FontWeight.w500, color: primary, letterSpacing: 0.3),
+      titleLarge: displayFont.copyWith(fontSize: 15, fontWeight: FontWeight.w500, color: primary, letterSpacing: 0.5),
+      titleMedium: bodyFont.copyWith(fontSize: 14, fontWeight: FontWeight.w500, color: primary, letterSpacing: 0.3),
+      titleSmall: bodyFont.copyWith(fontSize: 12, fontWeight: FontWeight.w500, color: secondary, letterSpacing: 0.5),
+      bodyLarge: bodyFont.copyWith(fontSize: 14, fontWeight: FontWeight.w400, color: primary),
+      bodyMedium: bodyFont.copyWith(fontSize: 13, fontWeight: FontWeight.w400, color: secondary),
+      bodySmall: bodyFont.copyWith(fontSize: 11, fontWeight: FontWeight.w400, color: secondary.withValues(alpha: 0.7)),
+      labelLarge: bodyFont.copyWith(fontSize: 13, fontWeight: FontWeight.w600, color: accent, letterSpacing: 1.5),
+      labelMedium: bodyFont.copyWith(fontSize: 11, fontWeight: FontWeight.w500, color: secondary, letterSpacing: 1.0),
+      labelSmall: bodyFont.copyWith(fontSize: 10, fontWeight: FontWeight.w400, color: secondary.withValues(alpha: 0.7), letterSpacing: 1.2),
     );
   }
 }

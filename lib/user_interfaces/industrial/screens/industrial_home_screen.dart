@@ -3,14 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../backend/models/peer.dart';
-import '../core/di/service_locator.dart';
-import '../core/theme/app_theme.dart';
-import '../providers/discovery_provider.dart';
-import '../providers/navigation_provider.dart';
-import '../widgets/peer_card.dart';
-import '../widgets/radar_painter.dart';
+import '../../../backend/models/peer.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../providers/discovery_provider.dart';
+import '../../../providers/transfer_provider.dart';
+import '../../../providers/navigation_provider.dart';
+import '../widgets/industrial_peer_card.dart';
+import '../widgets/industrial_radar_painter.dart';
 
 /// Home screen: peer discovery with radar visualization.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -40,12 +39,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Future<void> _connectToPeer(Peer peer) async {
+    final colors = AppTheme.colors(context);
     // Show confirmation dialog before connecting
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Theme.of(context).cardTheme.color,
-        title: Text('LINK ESTABLISHMENT', style: GoogleFonts.unbounded(fontSize: 16)),
+        title: Text('LINK ESTABLISHMENT', style: Theme.of(context).textTheme.headlineMedium),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -55,22 +55,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.cyan.withValues(alpha: 0.1),
+                color: colors.primaryGlow.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppTheme.cyan.withValues(alpha: 0.3)),
+                border: Border.all(color: colors.primaryGlow.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
                   Icon(
                     peer.deviceType == 'laptop' ? Icons.laptop_rounded : Icons.phone_android_rounded,
-                    color: AppTheme.cyan,
+                    color: colors.primaryGlow,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(peer.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppTheme.cyan)),
+                        Text(peer.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: colors.primaryGlow)),
                         Text('SIGNAL: ${(peer.signalStrength * 100).toInt()}%', style: Theme.of(context).textTheme.labelSmall),
                       ],
                     ),
@@ -83,15 +83,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('ABORT', style: GoogleFonts.sourceCodePro(color: AppTheme.textTertiary)),
+            child: Text('ABORT', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5))),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.cyan,
-              foregroundColor: Colors.black,
+              backgroundColor: colors.primaryGlow,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: Text('AUTHORIZE', style: GoogleFonts.sourceCodePro(fontWeight: FontWeight.bold)),
+            child: Text('AUTHORIZE', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.onPrimary)),
           ),
         ],
       ),
@@ -101,18 +101,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     HapticFeedback.lightImpact();
     ref.read(connectingPeerIdProvider.notifier).state = peer.id;
-    await ServiceLocator().discoveryService.connectToPeer(peer.id);
+    await ref.read(discoveryServiceProvider).connectToPeer(peer.id);
     if (mounted) {
       ref.read(connectingPeerIdProvider.notifier).state = null;
     }
   }
 
   Future<void> _sendFileToPeer(Peer peer) async {
+    final colors = AppTheme.colors(context);
     final result = await FilePicker.platform.pickFiles();
     if (result == null || result.files.isEmpty) return;
 
     final file = result.files.first;
-    ServiceLocator().transferService.sendFile(
+    ref.read(transferServiceProvider).sendFile(
       peerId: peer.id,
       peerName: peer.name,
       filePath: file.path ?? '',
@@ -128,9 +129,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         SnackBar(
           content: Text(
             'TRANSFER INITIATED: ${file.name}',
-            style: GoogleFonts.sourceCodePro(
-              color: AppTheme.cyan,
-              fontWeight: FontWeight.bold,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: colors.primaryGlow,
               letterSpacing: 1.2,
             ),
           ),
@@ -138,7 +138,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            side: const BorderSide(color: AppTheme.cyan, width: 0.5),
+            side: BorderSide(color: colors.primaryGlow, width: 0.5),
           ),
         ),
       );
@@ -150,6 +150,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final peersAsync = ref.watch(discoveryStreamProvider);
     final connectingId = ref.watch(connectingPeerIdProvider);
     final tt = Theme.of(context).textTheme;
+    final colors = AppTheme.colors(context);
 
     return Column(
       children: [
@@ -160,9 +161,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             alignment: Alignment.center,
             children: [
               // Static background (rings)
-              const RepaintBoundary(
+              RepaintBoundary(
                 child: CustomPaint(
-                  painter: StaticRadarPainter(),
+                  painter: StaticRadarPainter(colors: colors),
                   size: Size.infinite,
                 ),
               ),
@@ -174,6 +175,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   return CustomPaint(
                     painter: SweepPainter(
                       sweepAngle: _sweepController.value * 2 * pi,
+                      colors: colors,
                     ),
                     size: Size.infinite,
                   );
@@ -214,8 +216,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       Container(
                         width: 6,
                         height: 6,
-                        decoration: const BoxDecoration(
-                          color: AppTheme.cyan,
+                        decoration: BoxDecoration(
+                          color: colors.primaryGlow,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -223,7 +225,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       Text(
                         'SCANNING',
                         style: tt.labelMedium?.copyWith(
-                          color: AppTheme.cyan,
+                          color: colors.primaryGlow,
                           letterSpacing: 3,
                         ),
                       ),
@@ -256,12 +258,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 data: (peers) => Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: AppTheme.cyan.withValues(alpha: 0.1),
+                    color: colors.primaryGlow.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     '${peers.length}',
-                    style: tt.labelSmall?.copyWith(color: AppTheme.cyan),
+                    style: tt.labelSmall?.copyWith(color: colors.primaryGlow),
                   ),
                 ),
                 loading: () => const SizedBox.shrink(),
@@ -301,14 +303,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     peer: peer,
                     isConnecting: connectingId == peer.id,
                     onConnect: () => _connectToPeer(peer),
-                    onDisconnect: () => ServiceLocator().discoveryService.disconnectFromPeer(peer.id),
+                    onDisconnect: () => ref.read(discoveryServiceProvider).disconnectFromPeer(peer.id),
                     onSendFile: () => _sendFileToPeer(peer),
                   );
                 },
               );
             },
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: AppTheme.cyan),
+            loading: () => Center(
+              child: CircularProgressIndicator(color: colors.primaryGlow),
             ),
             error: (err, _) => Center(
               child: Text('Discovery error: $err', style: tt.bodyMedium),
@@ -395,7 +397,8 @@ class _PeerDotState extends State<_PeerDot> with SingleTickerProviderStateMixin 
 
   @override
   Widget build(BuildContext context) {
-    final color = widget.peer.isConnected ? AppTheme.green : AppTheme.radarDot;
+    final colors = AppTheme.colors(context);
+    final color = widget.peer.isConnected ? colors.success : colors.primaryGlow;
     final initial = widget.peer.name.isNotEmpty ? widget.peer.name[0] : '?';
 
     return AnimatedOpacity(

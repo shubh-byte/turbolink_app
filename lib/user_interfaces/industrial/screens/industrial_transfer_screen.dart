@@ -2,11 +2,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../backend/models/transfer.dart';
-import '../core/di/service_locator.dart';
-import '../core/theme/app_theme.dart';
-import '../providers/transfer_provider.dart';
-import '../widgets/transfer_progress.dart';
+import '../../../backend/models/transfer.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../providers/transfer_provider.dart';
+import '../widgets/industrial_transfer_progress.dart';
 
 /// Transfer screen: shows all active, queued, and completed transfers.
 ///
@@ -34,6 +33,7 @@ class TransferScreen extends ConsumerWidget {
 
     final transfersAsync = ref.watch(transfersStreamProvider);
     final tt = Theme.of(context).textTheme;
+    final colors = AppTheme.colors(context);
 
     return transfersAsync.when(
       data: (transfers) {
@@ -64,13 +64,12 @@ class TransferScreen extends ConsumerWidget {
               _SectionHeader(
                 title: 'ACTIVE',
                 count: active.length,
-                color: AppTheme.amber,
+                color: colors.secondaryGlow,
               ),
               ...active.map(
                 (t) => TransferProgressCard(
                   transfer: t,
-                  onCancel: () => ServiceLocator()
-                      .transferService
+                  onCancel: () => ref.read(transferServiceProvider)
                       .cancelTransfer(t.id),
                 ),
               ),
@@ -82,7 +81,7 @@ class TransferScreen extends ConsumerWidget {
               _SectionHeader(
                 title: 'HISTORY',
                 count: completed.length,
-                color: AppTheme.textTertiary,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
               ),
               ...completed.map(
                 (t) => TransferProgressCard(transfer: t),
@@ -97,8 +96,8 @@ class TransferScreen extends ConsumerWidget {
           ],
         );
       },
-      loading: () => const Center(
-        child: CircularProgressIndicator(color: AppTheme.cyan),
+      loading: () => Center(
+        child: CircularProgressIndicator(color: colors.primaryGlow),
       ),
       error: (err, _) => Center(
         child: Text('Error: $err', style: tt.bodyMedium),
@@ -296,7 +295,7 @@ class _SectionHeader extends StatelessWidget {
           Expanded(
             child: Container(
               height: 0.5,
-              color: AppTheme.border,
+              color: Theme.of(context).dividerColor,
             ),
           ),
         ],
@@ -312,6 +311,7 @@ class _StatsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colors(context);
     final totalBytes = transfers.fold<int>(
       0,
       (sum, t) => sum + (t.progress * t.fileSizeBytes).round(),
@@ -335,9 +335,9 @@ class _StatsBar extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: AppTheme.spacingMd),
       padding: const EdgeInsets.all(AppTheme.spacingMd),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceAlt,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.border, width: 0.5),
+        border: Border.all(color: Theme.of(context).dividerColor, width: 0.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.max,
@@ -346,19 +346,19 @@ class _StatsBar extends StatelessWidget {
           _StatItem(
             label: 'TRANSFERRED',
             value: totalFormatted,
-            color: AppTheme.cyan,
+            color: colors.primaryGlow,
           ),
-          Container(width: 0.5, height: 32, color: AppTheme.border),
+          Container(width: 0.5, height: 32, color: Theme.of(context).dividerColor),
           _StatItem(
             label: 'COMPLETED',
             value: '$completedCount',
-            color: AppTheme.green,
+            color: colors.success,
           ),
-          Container(width: 0.5, height: 32, color: AppTheme.border),
+          Container(width: 0.5, height: 32, color: Theme.of(context).dividerColor),
           _StatItem(
             label: 'TOTAL',
             value: '${transfers.length}',
-            color: AppTheme.textSecondary,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
         ],
       ),

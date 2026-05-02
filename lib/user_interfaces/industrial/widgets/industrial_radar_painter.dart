@@ -1,10 +1,12 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../core/theme/app_theme.dart';
+import '../../../core/theme/turbo_colors.dart';
 
 /// Painter for the static background of the radar (rings and crosshairs).
 class StaticRadarPainter extends CustomPainter {
-  const StaticRadarPainter();
+  final TurboColors colors;
+  
+  const StaticRadarPainter({required this.colors});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -13,7 +15,7 @@ class StaticRadarPainter extends CustomPainter {
 
     // ── Concentric rings ───────────────────────────────────────────────
     final ringPaint = Paint()
-      ..color = AppTheme.radarRing
+      ..color = colors.radarRing
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
 
@@ -23,7 +25,7 @@ class StaticRadarPainter extends CustomPainter {
 
     // ── Cross-hair lines ───────────────────────────────────────────────
     final crossPaint = Paint()
-      ..color = AppTheme.radarRing.withValues(alpha: 0.4)
+      ..color = colors.radarRing.withValues(alpha: 0.4)
       ..strokeWidth = 0.5;
 
     canvas.drawLine(
@@ -39,14 +41,15 @@ class StaticRadarPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(StaticRadarPainter oldDelegate) => false;
+  bool shouldRepaint(StaticRadarPainter oldDelegate) => colors != oldDelegate.colors;
 }
 
 /// Painter for the dynamic rotating sweep.
 class SweepPainter extends CustomPainter {
   final double sweepAngle;
+  final TurboColors colors;
 
-  SweepPainter({required this.sweepAngle});
+  SweepPainter({required this.sweepAngle, required this.colors});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -59,8 +62,8 @@ class SweepPainter extends CustomPainter {
       startAngle: sweepAngle - 0.8,
       endAngle: sweepAngle,
       colors: [
-        AppTheme.radarSweep.withValues(alpha: 0.0),
-        AppTheme.radarSweep.withValues(alpha: 0.15),
+        colors.radarSweep.withValues(alpha: 0.0),
+        colors.radarSweep.withValues(alpha: 0.15),
       ],
       transform: const GradientRotation(0),
     );
@@ -73,7 +76,7 @@ class SweepPainter extends CustomPainter {
 
     // ── Sweep line ─────────────────────────────────────────────────────
     final linePaint = Paint()
-      ..color = AppTheme.radarSweep.withValues(alpha: 0.6)
+      ..color = colors.radarSweep.withValues(alpha: 0.6)
       ..strokeWidth = 1.5
       ..strokeCap = StrokeCap.round;
 
@@ -85,18 +88,18 @@ class SweepPainter extends CustomPainter {
 
     // ── Center dot ─────────────────────────────────────────────────────
     final centerDotPaint = Paint()
-      ..color = AppTheme.cyan
+      ..color = colors.primaryGlow
       ..style = PaintingStyle.fill;
     canvas.drawCircle(center, 4, centerDotPaint);
 
     final centerGlow = Paint()
-      ..color = AppTheme.cyan.withValues(alpha: 0.2)
+      ..color = colors.primaryGlow.withValues(alpha: 0.2)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(center, 10, centerGlow);
   }
 
   @override
   bool shouldRepaint(SweepPainter oldDelegate) {
-    return sweepAngle != oldDelegate.sweepAngle;
+    return sweepAngle != oldDelegate.sweepAngle || colors != oldDelegate.colors;
   }
 }
