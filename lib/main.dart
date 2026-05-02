@@ -1,12 +1,9 @@
-import 'package:flutter/foundation.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
-import 'core/di/service_locator.dart';
-import 'backend/services/native_discovery_service.dart';
-import 'backend/services/native_transfer_service.dart';
 import 'providers/settings_provider.dart';
 
 void main() async {
@@ -15,12 +12,7 @@ void main() async {
   // Initialize SharedPreferences before running the app.
   final sharedPrefs = await SharedPreferences.getInstance();
 
-  // On Android, wire up the real Kotlin-backed services.
-  // On all other platforms, the ServiceLocator falls back to mocks.
-  if (defaultTargetPlatform == TargetPlatform.android) {
-    ServiceLocator().registerDiscoveryService(NativeDiscoveryService());
-    ServiceLocator().registerTransferService(NativeTransferService());
-  }
+
 
   // Lock to portrait and set system UI style for immersive dark theme.
   SystemChrome.setPreferredOrientations([

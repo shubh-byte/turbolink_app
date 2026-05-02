@@ -1,7 +1,7 @@
 /// Data model for an active or completed file transfer.
 ///
 /// Tracks progress (0.0 to 1.0), speed in bytes/sec, and status.
-enum TransferStatus { queued, active, completed, failed }
+enum TransferStatus { queued, active, paused, completed, failed }
 
 enum TransferDirection { sending, receiving }
 

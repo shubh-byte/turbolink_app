@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
 import '../models/peer.dart';
-import '../services/discovery_service.dart';
+import 'discovery_service.dart';
 
 /// Real discovery service backed by the native Kotlin backend.
 ///
@@ -52,6 +52,14 @@ class NativeDiscoveryService implements DiscoveryService {
     await _methodChannel.invokeMethod(
       'disconnectFromPeer',
       {'peerId': peerId},
+    );
+  }
+
+  @override
+  Future<void> setDiscoveryMode(String mode) async {
+    await _methodChannel.invokeMethod(
+      'setMode',
+      {'mode': mode},
     );
   }
 }

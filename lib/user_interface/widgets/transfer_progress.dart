@@ -1,25 +1,31 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../../../backend/models/transfer.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../backend/models/transfer.dart';
+import '../../core/theme_engine/base_theme.dart';
 
 /// A single transfer progress card with an arc progress indicator,
 /// speed readout, and file metadata.
 class TransferProgressCard extends StatelessWidget {
   final Transfer transfer;
   final VoidCallback? onCancel;
+  final VoidCallback? onPause;
+  final VoidCallback? onResume;
 
   const TransferProgressCard({
     super.key,
     required this.transfer,
     this.onCancel,
+    this.onPause,
+    this.onResume,
   });
 
   Color _statusColor(BuildContext context) {
-    final colors = AppTheme.colors(context);
+    final colors = BaseTheme.colors(context);
     switch (transfer.status) {
       case TransferStatus.active:
         return colors.secondaryGlow;
+      case TransferStatus.paused:
+        return Colors.orangeAccent;
       case TransferStatus.completed:
         return colors.success;
       case TransferStatus.failed:
@@ -30,10 +36,12 @@ class TransferProgressCard extends StatelessWidget {
   }
 
   Color _statusBgColor(BuildContext context) {
-    final colors = AppTheme.colors(context);
+    final colors = BaseTheme.colors(context);
     switch (transfer.status) {
       case TransferStatus.active:
         return colors.secondaryGlowDim;
+      case TransferStatus.paused:
+        return Colors.orangeAccent.withValues(alpha: 0.1);
       case TransferStatus.completed:
         return colors.primaryGlowDim;
       case TransferStatus.failed:
@@ -47,6 +55,8 @@ class TransferProgressCard extends StatelessWidget {
     switch (transfer.status) {
       case TransferStatus.active:
         return '${(transfer.progress * 100).toInt()}%';
+      case TransferStatus.paused:
+        return 'PAUSED';
       case TransferStatus.completed:
         return 'DONE';
       case TransferStatus.failed:
@@ -67,23 +77,23 @@ class TransferProgressCard extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
     final color = _statusColor(context);
     final bgColor = _statusBgColor(context);
-    final colors = AppTheme.colors(context);
+    final colors = BaseTheme.colors(context);
 
     return Container(
       margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingMd,
-        vertical: AppTheme.spacingXs,
+        horizontal: BaseTheme.spacingMd,
+        vertical: BaseTheme.spacingXs,
       ),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        borderRadius: BorderRadius.circular(BaseTheme.radiusMd),
         border: Border.all(
           color: color.withValues(alpha: 0.2),
           width: 0.5,
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingMd),
+        padding: const EdgeInsets.all(BaseTheme.spacingMd),
         child: Row(
           children: [
             // Arc progress indicator.
@@ -104,7 +114,7 @@ class TransferProgressCard extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: AppTheme.spacingMd),
+            const SizedBox(width: BaseTheme.spacingMd),
 
             // File name + peer + speed.
             Expanded(
@@ -121,14 +131,14 @@ class TransferProgressCard extends StatelessWidget {
                     '${transfer.direction == TransferDirection.sending ? "→" : "←"} ${transfer.peerName}',
                     style: tt.bodySmall,
                   ),
-                  if (transfer.status == TransferStatus.active) ...[
+                  if (transfer.status == TransferStatus.active || transfer.status == TransferStatus.paused) ...[
                     const SizedBox(height: 4),
                     Row(
                       children: [
                         Text(
-                          transfer.speedFormatted,
+                          transfer.status == TransferStatus.paused ? 'SYSTEM PAUSED' : transfer.speedFormatted,
                           style: tt.labelLarge?.copyWith(
-                            color: colors.secondaryGlow,
+                            color: transfer.status == TransferStatus.paused ? Colors.orangeAccent : colors.secondaryGlow,
                             fontSize: 11,
                           ),
                         ),
@@ -144,7 +154,7 @@ class TransferProgressCard extends StatelessWidget {
               ),
             ),
 
-            // Status label + cancel button.
+            // Status label + controls.
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -166,21 +176,58 @@ class TransferProgressCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (transfer.status == TransferStatus.active &&
-                    onCancel != null) ...[
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: onCancel,
-                    child: Icon(
-                      Icons.close_rounded,
-                      size: 18,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
+                if ((transfer.status == TransferStatus.active || transfer.status == TransferStatus.paused)) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Pause/Resume button
+                      _ControlBtn(
+                        icon: transfer.status == TransferStatus.paused 
+                          ? Icons.play_arrow_rounded 
+                          : Icons.pause_rounded,
+                        onTap: transfer.status == TransferStatus.paused ? onResume : onPause,
+                      ),
+                      const SizedBox(width: 12),
+                      // Cancel button
+                      _ControlBtn(
+                        icon: Icons.close_rounded,
+                        onTap: onCancel,
+                        color: colors.error.withValues(alpha: 0.7),
+                      ),
+                    ],
                   ),
                 ],
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ControlBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final Color? color;
+
+  const _ControlBtn({required this.icon, this.onTap, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: (color ?? Theme.of(context).colorScheme.onSurface).withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          icon,
+          size: 16,
+          color: (color ?? Theme.of(context).colorScheme.onSurface).withValues(alpha: 0.6),
         ),
       ),
     );

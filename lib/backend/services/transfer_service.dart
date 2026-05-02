@@ -19,4 +19,10 @@ abstract class TransferService {
 
   /// Cancel an active transfer.
   Future<void> cancelTransfer(String transferId);
+
+  /// Pause an active transfer.
+  Future<void> pauseTransfer(String transferId);
+
+  /// Resume a paused transfer.
+  Future<void> resumeTransfer(String transferId);
 }

@@ -2,17 +2,17 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../backend/models/transfer.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../providers/transfer_provider.dart';
-import '../widgets/industrial_transfer_progress.dart';
+import '../../backend/models/transfer.dart';
+import '../../core/theme_engine/base_theme.dart';
+import '../../providers/transfer_provider.dart';
+import '../widgets/transfer_progress.dart';
 
-/// Transfer screen: shows all active, queued, and completed transfers.
+/// Base transfer screen: shows all active, queued, and completed transfers.
 ///
 /// Grouped into "Active" and "Completed" sections with live speed
 /// readouts and arc progress indicators.
-class TransferScreen extends ConsumerWidget {
-  const TransferScreen({super.key});
+class BaseTransferScreen extends ConsumerWidget {
+  const BaseTransferScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -33,13 +33,14 @@ class TransferScreen extends ConsumerWidget {
 
     final transfersAsync = ref.watch(transfersStreamProvider);
     final tt = Theme.of(context).textTheme;
-    final colors = AppTheme.colors(context);
+    final colors = BaseTheme.colors(context);
 
     return transfersAsync.when(
       data: (transfers) {
         final active = transfers
             .where((t) =>
                 t.status == TransferStatus.active ||
+                t.status == TransferStatus.paused ||
                 t.status == TransferStatus.queued)
             .toList();
         final completed = transfers
@@ -54,8 +55,8 @@ class TransferScreen extends ConsumerWidget {
 
         return ListView(
           padding: const EdgeInsets.only(
-            top: AppTheme.spacingMd,
-            bottom: AppTheme.spacingXxl,
+            top: BaseTheme.spacingMd,
+            bottom: BaseTheme.spacingXxl,
           ),
           physics: const BouncingScrollPhysics(),
           children: [
@@ -71,9 +72,13 @@ class TransferScreen extends ConsumerWidget {
                   transfer: t,
                   onCancel: () => ref.read(transferServiceProvider)
                       .cancelTransfer(t.id),
+                  onPause: () => ref.read(transferServiceProvider)
+                      .pauseTransfer(t.id),
+                  onResume: () => ref.read(transferServiceProvider)
+                      .resumeTransfer(t.id),
                 ),
               ),
-              const SizedBox(height: AppTheme.spacingLg),
+              const SizedBox(height: BaseTheme.spacingLg),
             ],
 
             // ── Completed transfers section ──────────────────────────
@@ -90,7 +95,7 @@ class TransferScreen extends ConsumerWidget {
 
             // ── Aggregate stats ──────────────────────────────────────
             if (transfers.isNotEmpty) ...[
-              const SizedBox(height: AppTheme.spacingLg),
+              const SizedBox(height: BaseTheme.spacingLg),
               _StatsBar(transfers: transfers),
             ],
           ],
@@ -120,7 +125,7 @@ class _EmptyState extends StatelessWidget {
         children: [
           // Technical HUD wireframe graphic
           const _HUDWireframe(),
-          const SizedBox(height: AppTheme.spacingLg),
+          const SizedBox(height: BaseTheme.spacingLg),
           Text(
             'NO ACTIVE STREAMS',
             style: tt.headlineMedium?.copyWith(
@@ -128,7 +133,7 @@ class _EmptyState extends StatelessWidget {
               letterSpacing: 2,
             ),
           ),
-          const SizedBox(height: AppTheme.spacingSm),
+          const SizedBox(height: BaseTheme.spacingSm),
           Text(
             'System idle. Connect to a peer node\nto begin data transmission.',
             style: tt.bodyMedium,
@@ -217,7 +222,7 @@ class _WireframePainter extends CustomPainter {
     final pulseRadius = radius * (0.5 + 0.3 * sin(progress * 2 * pi).abs());
     final pulsePath = Path();
     for (var i = 0; i < 6; i++) {
-      final angle = i * pi / 3 + progress * pi / 6;
+      final angle = i * pi / 3 + progress * pi / 3;
       final x = center.dx + pulseRadius * cos(angle);
       final y = center.dy + pulseRadius * sin(angle);
       if (i == 0) {
@@ -270,8 +275,8 @@ class _SectionHeader extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingMd,
-        vertical: AppTheme.spacingSm,
+        horizontal: BaseTheme.spacingMd,
+        vertical: BaseTheme.spacingSm,
       ),
       child: Row(
         children: [
@@ -311,7 +316,7 @@ class _StatsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.colors(context);
+    final colors = BaseTheme.colors(context);
     final totalBytes = transfers.fold<int>(
       0,
       (sum, t) => sum + (t.progress * t.fileSizeBytes).round(),
@@ -332,11 +337,11 @@ class _StatsBar extends StatelessWidget {
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppTheme.spacingMd),
-      padding: const EdgeInsets.all(AppTheme.spacingMd),
+      margin: const EdgeInsets.symmetric(horizontal: BaseTheme.spacingMd),
+      padding: const EdgeInsets.all(BaseTheme.spacingMd),
       decoration: BoxDecoration(
         color: Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        borderRadius: BorderRadius.circular(BaseTheme.radiusMd),
         border: Border.all(color: Theme.of(context).dividerColor, width: 0.5),
       ),
       child: Row(

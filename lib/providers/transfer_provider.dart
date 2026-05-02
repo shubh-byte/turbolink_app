@@ -1,14 +1,21 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../backend/models/transfer.dart';
 import '../backend/services/transfer_service.dart';
-import '../backend/mock/mock_transfer_service.dart';
-import '../backend/services/native_transfer_service.dart';
+import '../backend/mock/transfer.dart';
+import '../backend/services/transfer_android.dart';
 import 'mock_mode_provider.dart';
 
 /// Provides the active TransferService instance (Demo vs Release).
 final transferServiceProvider = Provider<TransferService>((ref) {
   final isMock = ref.watch(mockModeProvider);
-  return isMock ? MockTransferService() : NativeTransferService();
+  if (isMock) return MockTransferService();
+  
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    return NativeTransferService();
+  }
+  
+  return MockTransferService();
 });
 
 /// Provides the stream of all transfers (active + completed) based on active mode.

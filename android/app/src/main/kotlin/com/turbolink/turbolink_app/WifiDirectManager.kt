@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.MacAddress
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pDeviceList
@@ -38,6 +39,8 @@ class WifiDirectManager(
 
     companion object {
         private const val TAG = "WifiDirectManager"
+        // Force a secure, non-default passphrase for the P2P Group Owner.
+        private const val P2P_PASSPHRASE = "turbolink_max_speed_p2p_2026"
     }
 
     private val manager: WifiP2pManager =
@@ -78,9 +81,17 @@ class WifiDirectManager(
             ?: return false
 
         return suspendCancellableCoroutine { cont ->
-            val config = WifiP2pConfig().apply {
-                deviceAddress = device.deviceAddress
+            val config = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                WifiP2pConfig.Builder()
+                    .setDeviceAddress(MacAddress.fromString(device.deviceAddress))
+                    .setPassphrase(P2P_PASSPHRASE)
+                    .build()
+            } else {
+                WifiP2pConfig().apply {
+                    deviceAddress = device.deviceAddress
+                }
             }
+            
             manager.connect(channel, config, object : WifiP2pManager.ActionListener {
                 override fun onSuccess() {
                     connectedDeviceAddresses.add(device.deviceAddress)

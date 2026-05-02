@@ -66,8 +66,15 @@ class MockDiscoveryService implements DiscoveryService {
       for (var i = 0; i < _activePeers.length; i++) {
         final peer = _activePeers[i];
         final delta = (_random.nextDouble() - 0.5) * 0.15;
+        final newSignal = (peer.signalStrength + delta).clamp(0.1, 1.0);
+        
+        // Simulate a dropped Wi-Fi Direct socket if they wander into Deep Space
+        if (newSignal < 0.15 && _connectedPeerIds.contains(peer.id)) {
+          _connectedPeerIds.remove(peer.id);
+        }
+
         _activePeers[i] = peer.copyWith(
-          signalStrength: (peer.signalStrength + delta).clamp(0.1, 1.0),
+          signalStrength: newSignal,
           isConnected: _connectedPeerIds.contains(peer.id),
         );
       }
@@ -124,5 +131,10 @@ class MockDiscoveryService implements DiscoveryService {
     if (_controller != null && !_controller!.isClosed) {
       _controller!.add(List.unmodifiable(_activePeers));
     }
+  }
+
+  @override
+  Future<void> setDiscoveryMode(String mode) async {
+    // No-op in mock
   }
 }

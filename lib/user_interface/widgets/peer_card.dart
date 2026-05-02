@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../../../backend/models/peer.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../backend/models/peer.dart';
+import '../../core/theme_engine/base_theme.dart';
 
 /// A single peer device card shown in the list view below the radar.
 ///
@@ -37,90 +37,107 @@ class PeerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
-    final colors = AppTheme.colors(context);
+    final colors = BaseTheme.colors(context);
+    final isOutOfRange = peer.signalStrength < 0.15;
 
-    return AnimatedContainer(
+    return AnimatedOpacity(
       duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingMd,
-        vertical: AppTheme.spacingXs,
-      ),
-      decoration: BoxDecoration(
-        color: peer.isConnected ? colors.primaryGlow.withValues(alpha: 0.1) : Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(
-          color: peer.isConnected
-              ? colors.primaryGlow.withValues(alpha: 0.3)
-              : Theme.of(context).dividerColor,
-          width: peer.isConnected ? 1.0 : 0.5,
+      opacity: isOutOfRange ? 0.6 : 1.0,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        margin: const EdgeInsets.symmetric(
+          horizontal: BaseTheme.spacingMd,
+          vertical: BaseTheme.spacingXs,
         ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          onTap: peer.isConnected ? onSendFile : onConnect,
-          child: Padding(
-            padding: const EdgeInsets.all(AppTheme.spacingMd),
-            child: Row(
-              children: [
-                // Device icon with glow.
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: peer.isConnected
-                        ? colors.primaryGlow.withValues(alpha: 0.15)
-                        : Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        decoration: BoxDecoration(
+          color: peer.isConnected ? colors.primaryGlow.withValues(alpha: 0.1) : Theme.of(context).cardTheme.color,
+          borderRadius: BorderRadius.circular(BaseTheme.radiusMd),
+          border: Border.all(
+            color: peer.isConnected
+                ? colors.primaryGlow.withValues(alpha: 0.3)
+                : Theme.of(context).dividerColor,
+            width: peer.isConnected ? 1.0 : 0.5,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(BaseTheme.radiusMd),
+            onTap: isOutOfRange ? null : (peer.isConnected ? onSendFile : onConnect),
+            child: Padding(
+              padding: const EdgeInsets.all(BaseTheme.spacingMd),
+              child: Row(
+                children: [
+                  // Device icon with glow.
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: peer.isConnected
+                          ? colors.primaryGlow.withValues(alpha: 0.15)
+                          : Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(BaseTheme.radiusSm),
+                    ),
+                    child: Icon(
+                      _deviceIcon,
+                      color: peer.isConnected
+                          ? colors.primaryGlow
+                          : Theme.of(context).iconTheme.color?.withValues(alpha: isOutOfRange ? 0.4 : 1.0),
+                      size: 22,
+                    ),
                   ),
-                  child: Icon(
-                    _deviceIcon,
-                    color: peer.isConnected
-                        ? colors.primaryGlow
-                        : Theme.of(context).iconTheme.color,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: AppTheme.spacingMd),
-
-                // Name + signal bar.
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        peer.name,
-                        style: tt.titleMedium?.copyWith(
-                          color: peer.isConnected
-                              ? colors.primaryGlow
-                              : Theme.of(context).colorScheme.onSurface,
+                  const SizedBox(width: BaseTheme.spacingMd),
+  
+                  // Name + signal bar.
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          peer.name,
+                          style: tt.titleMedium?.copyWith(
+                            color: peer.isConnected
+                                ? colors.primaryGlow
+                                : Theme.of(context).colorScheme.onSurface.withValues(alpha: isOutOfRange ? 0.5 : 1.0),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      _SignalBar(strength: peer.signalStrength, activeColor: colors.primaryGlow),
-                    ],
+                        const SizedBox(height: 6),
+                        _SignalBar(strength: peer.signalStrength, activeColor: isOutOfRange ? Colors.grey : colors.primaryGlow),
+                      ],
+                    ),
                   ),
-                ),
-
-                // Action button.
-                if (isConnecting)
-                  _HUDLoader(color: colors.primaryGlow)
-                else if (peer.isConnected)
-                  _ActionChip(
-                    label: 'SEND',
-                    color: colors.secondaryGlow,
-                    onTap: onSendFile,
-                  )
-                else
-                  _ActionChip(
-                    label: 'LINK',
-                    color: colors.primaryGlow,
-                    onTap: onConnect,
-                  ),
-              ],
+  
+                  // Action button.
+                  if (isConnecting)
+                    _HUDLoader(color: colors.primaryGlow)
+                  else if (isOutOfRange)
+                    _ActionChip(
+                      label: 'OUT OF RANGE',
+                      color: Colors.grey.withValues(alpha: 0.5),
+                      onTap: () {},
+                    )
+                  else if (peer.isConnected) ...[
+                    _ActionChip(
+                      label: 'DISCONNECT',
+                      color: colors.error.withValues(alpha: 0.6),
+                      onTap: onDisconnect,
+                    ),
+                    const SizedBox(width: 8),
+                    _ActionChip(
+                      label: 'SEND',
+                      color: colors.secondaryGlow,
+                      onTap: onSendFile,
+                    ),
+                  ] else
+                    _ActionChip(
+                      label: 'LINK',
+                      color: colors.primaryGlow,
+                      onTap: onConnect,
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -265,7 +282,7 @@ class _ActionChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+          borderRadius: BorderRadius.circular(BaseTheme.radiusSm),
           border: Border.all(color: color.withValues(alpha: 0.3), width: 0.5),
         ),
         child: Text(

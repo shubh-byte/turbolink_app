@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../../../core/theme/turbo_colors.dart';
+import '../../core/theme_engine/turbo_colors.dart';
 
 /// Painter for the static background of the radar (rings and crosshairs).
 class StaticRadarPainter extends CustomPainter {

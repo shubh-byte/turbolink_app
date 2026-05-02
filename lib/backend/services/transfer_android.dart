@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
 import '../models/transfer.dart';
-import '../services/transfer_service.dart';
+import 'transfer_service.dart';
 
 /// Real transfer service backed by the native Kotlin backend.
 ///
@@ -76,10 +76,28 @@ class NativeTransferService implements TransferService {
     );
   }
 
+  @override
+  Future<void> pauseTransfer(String transferId) async {
+    await _methodChannel.invokeMethod(
+      'pauseTransfer',
+      {'transferId': transferId},
+    );
+  }
+
+  @override
+  Future<void> resumeTransfer(String transferId) async {
+    await _methodChannel.invokeMethod(
+      'resumeTransfer',
+      {'transferId': transferId},
+    );
+  }
+
   TransferStatus _parseStatus(String? status) {
     switch (status) {
       case 'active':
         return TransferStatus.active;
+      case 'paused':
+        return TransferStatus.paused;
       case 'completed':
         return TransferStatus.completed;
       case 'failed':

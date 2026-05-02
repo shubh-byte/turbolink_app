@@ -16,4 +16,7 @@ abstract class DiscoveryService {
 
   /// Disconnect from a connected peer.
   Future<void> disconnectFromPeer(String peerId);
+
+  /// Set the discovery mode ("max_speed" or "keep_internet").
+  Future<void> setDiscoveryMode(String mode);
 }
