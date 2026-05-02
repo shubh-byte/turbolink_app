@@ -2,19 +2,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../core/theme/app_theme.dart';
 
-/// Custom painter that renders the radar sweep animation.
-///
-/// Draws concentric rings, a rotating sweep line, and a subtle
-/// gradient glow. Peers are NOT drawn here — they're positioned
-/// as overlay widgets for tap interaction.
-class RadarPainter extends CustomPainter {
-  final double sweepAngle; // 0.0 to 2*pi, animated externally
-  final bool isScanning;
-
-  RadarPainter({
-    required this.sweepAngle,
-    this.isScanning = true,
-  });
+/// Painter for the static background of the radar (rings and crosshairs).
+class StaticRadarPainter extends CustomPainter {
+  const StaticRadarPainter();
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -46,8 +36,22 @@ class RadarPainter extends CustomPainter {
       Offset(center.dx, center.dy + maxRadius),
       crossPaint,
     );
+  }
 
-    if (!isScanning) return;
+  @override
+  bool shouldRepaint(StaticRadarPainter oldDelegate) => false;
+}
+
+/// Painter for the dynamic rotating sweep.
+class SweepPainter extends CustomPainter {
+  final double sweepAngle;
+
+  SweepPainter({required this.sweepAngle});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final maxRadius = min(size.width, size.height) / 2;
 
     // ── Sweep gradient (the "radar arm") ───────────────────────────────
     final sweepRect = Rect.fromCircle(center: center, radius: maxRadius);
@@ -92,8 +96,7 @@ class RadarPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(RadarPainter oldDelegate) {
-    return sweepAngle != oldDelegate.sweepAngle ||
-        isScanning != oldDelegate.isScanning;
+  bool shouldRepaint(SweepPainter oldDelegate) {
+    return sweepAngle != oldDelegate.sweepAngle;
   }
 }

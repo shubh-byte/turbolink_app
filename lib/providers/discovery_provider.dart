@@ -4,6 +4,9 @@ import '../core/di/service_locator.dart';
 
 /// Provides the stream of discovered peers from the active discovery service.
 final discoveryStreamProvider = StreamProvider<List<Peer>>((ref) {
+  ref.onDispose(() {
+    ServiceLocator().discoveryService.stopDiscovery();
+  });
   return ServiceLocator().discoveryService.discoverPeers();
 });
 

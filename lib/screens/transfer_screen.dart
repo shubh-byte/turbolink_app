@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../backend/models/transfer.dart';
 import '../core/di/service_locator.dart';
@@ -16,6 +17,21 @@ class TransferScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Trigger haptics when a transfer completes
+    ref.listen(transfersStreamProvider, (previous, next) {
+      final prevList = previous?.value ?? [];
+      final nextList = next.value ?? [];
+      
+      for (final nextT in nextList) {
+        if (nextT.status == TransferStatus.completed) {
+          final wasCompleted = prevList.any((t) => t.id == nextT.id && t.status == TransferStatus.completed);
+          if (!wasCompleted) {
+            HapticFeedback.heavyImpact();
+          }
+        }
+      }
+    });
+
     final transfersAsync = ref.watch(transfersStreamProvider);
     final tt = Theme.of(context).textTheme;
 
@@ -33,7 +49,7 @@ class TransferScreen extends ConsumerWidget {
             .toList();
 
         if (transfers.isEmpty) {
-          return _EmptyState();
+          return const _EmptyState();
         }
 
         return ListView(
@@ -93,6 +109,8 @@ class TransferScreen extends ConsumerWidget {
 
 /// Empty state shown when there are no transfers.
 class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
@@ -322,6 +340,7 @@ class _StatsBar extends StatelessWidget {
         border: Border.all(color: AppTheme.border, width: 0.5),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.max,
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _StatItem(

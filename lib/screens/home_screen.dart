@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,10 +13,6 @@ import '../widgets/peer_card.dart';
 import '../widgets/radar_painter.dart';
 
 /// Home screen: peer discovery with radar visualization.
-///
-/// The radar takes up the top ~40% of the screen with peer dots
-/// positioned by signal strength. Below it, a scrollable peer list
-/// shows detailed cards with connect/send actions.
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -42,9 +39,69 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     super.dispose();
   }
 
-  Future<void> _connectToPeer(String peerId) async {
-    ref.read(connectingPeerIdProvider.notifier).state = peerId;
-    await ServiceLocator().discoveryService.connectToPeer(peerId);
+  Future<void> _connectToPeer(Peer peer) async {
+    // Show confirmation dialog before connecting
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).cardTheme.color,
+        title: Text('LINK ESTABLISHMENT', style: GoogleFonts.unbounded(fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Do you want to establish a secure link with:', style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.cyan.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppTheme.cyan.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    peer.deviceType == 'laptop' ? Icons.laptop_rounded : Icons.phone_android_rounded,
+                    color: AppTheme.cyan,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(peer.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppTheme.cyan)),
+                        Text('SIGNAL: ${(peer.signalStrength * 100).toInt()}%', style: Theme.of(context).textTheme.labelSmall),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('ABORT', style: GoogleFonts.sourceCodePro(color: AppTheme.textTertiary)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.cyan,
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('AUTHORIZE', style: GoogleFonts.sourceCodePro(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    HapticFeedback.lightImpact();
+    ref.read(connectingPeerIdProvider.notifier).state = peer.id;
+    await ServiceLocator().discoveryService.connectToPeer(peer.id);
     if (mounted) {
       ref.read(connectingPeerIdProvider.notifier).state = null;
     }
@@ -63,9 +120,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       fileSizeBytes: file.size,
     );
 
-    // Switch to TRANSFERS tab to show progress
+    // Switch to TRANSFERS tab
     ref.read(navigationProvider.notifier).state = 1;
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -102,21 +159,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Radar canvas.
+              // Static background (rings)
+              const RepaintBoundary(
+                child: CustomPaint(
+                  painter: StaticRadarPainter(),
+                  size: Size.infinite,
+                ),
+              ),
+
+              // Rotating sweep
               AnimatedBuilder(
                 animation: _sweepController,
                 builder: (context, _) {
                   return CustomPaint(
-                    painter: RadarPainter(
+                    painter: SweepPainter(
                       sweepAngle: _sweepController.value * 2 * pi,
-                      isScanning: true,
                     ),
                     size: Size.infinite,
                   );
                 },
               ),
 
-              // Peer dots overlaid on radar.
+              // Peer dots
               peersAsync.when(
                 data: (peers) => _PeerDots(
                   peers: peers,
@@ -124,7 +188,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     if (peer.isConnected) {
                       _sendFileToPeer(peer);
                     } else {
-                      _connectToPeer(peer.id);
+                      _connectToPeer(peer);
                     }
                   },
                 ),
@@ -132,14 +196,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 error: (e, s) => const SizedBox.shrink(),
               ),
 
-              // "SCANNING" label at bottom of radar.
+              // "SCANNING" label
               Positioned(
                 bottom: AppTheme.spacingMd,
                 child: AnimatedBuilder(
                   animation: _sweepController,
                   builder: (context, child) {
-                    final opacity =
-                        (sin(_sweepController.value * 2 * pi) + 1) / 2;
+                    final opacity = (sin(_sweepController.value * 2 * pi) + 1) / 2;
                     return Opacity(
                       opacity: 0.4 + opacity * 0.6,
                       child: child,
@@ -172,14 +235,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
         ),
 
-        // ── Divider ──────────────────────────────────────────────────
         Container(
           height: 1,
           margin: const EdgeInsets.symmetric(horizontal: AppTheme.spacingXl),
           color: Theme.of(context).dividerColor,
         ),
 
-        // ── Peer list header ─────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(
             AppTheme.spacingMd,
@@ -193,10 +254,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               const SizedBox(width: 8),
               peersAsync.when(
                 data: (peers) => Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: AppTheme.cyan.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
@@ -213,7 +271,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
         ),
 
-        // ── Peer list ────────────────────────────────────────────────
         Expanded(
           flex: 5,
           child: peersAsync.when(
@@ -229,10 +286,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         color: Theme.of(context).disabledColor.withValues(alpha: 0.5),
                       ),
                       const SizedBox(height: AppTheme.spacingSm),
-                      Text(
-                        'Searching for peers...',
-                        style: tt.bodyMedium,
-                      ),
+                      Text('Searching for peers...', style: tt.bodyMedium),
                     ],
                   ),
                 );
@@ -246,10 +300,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   return PeerCard(
                     peer: peer,
                     isConnecting: connectingId == peer.id,
-                    onConnect: () => _connectToPeer(peer.id),
-                    onDisconnect: () => ServiceLocator()
-                        .discoveryService
-                        .disconnectFromPeer(peer.id),
+                    onConnect: () => _connectToPeer(peer),
+                    onDisconnect: () => ServiceLocator().discoveryService.disconnectFromPeer(peer.id),
                     onSendFile: () => _sendFileToPeer(peer),
                   );
                 },
@@ -268,10 +320,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 }
 
-/// Positions peer dots on the radar canvas based on signal strength.
-///
-/// Stronger signal = closer to center. Each dot has a pulsing glow
-/// and shows the peer's initial letter.
 class _PeerDots extends StatelessWidget {
   final List<Peer> peers;
   final ValueChanged<Peer> onTap;
@@ -282,10 +330,7 @@ class _PeerDots extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final center = Offset(
-          constraints.maxWidth / 2,
-          constraints.maxHeight / 2,
-        );
+        final center = Offset(constraints.maxWidth / 2, constraints.maxHeight / 2);
         final maxRadius = min(constraints.maxWidth, constraints.maxHeight) / 2;
 
         return Stack(
@@ -293,9 +338,7 @@ class _PeerDots extends StatelessWidget {
             final index = entry.key;
             final peer = entry.value;
 
-            // Position: distance from center inversely proportional to signal.
             final distance = maxRadius * (1.0 - peer.signalStrength * 0.85);
-            // Spread peers around the circle using golden angle.
             final angle = index * 2.399 + 0.5;
 
             final x = center.dx + distance * cos(angle) - 16;
@@ -316,7 +359,6 @@ class _PeerDots extends StatelessWidget {
   }
 }
 
-/// Individual peer dot with glow and initial letter.
 class _PeerDot extends StatefulWidget {
   final Peer peer;
   const _PeerDot({required this.peer});
@@ -325,8 +367,7 @@ class _PeerDot extends StatefulWidget {
   State<_PeerDot> createState() => _PeerDotState();
 }
 
-class _PeerDotState extends State<_PeerDot>
-    with SingleTickerProviderStateMixin {
+class _PeerDotState extends State<_PeerDot> with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   bool _isVisible = false;
 
@@ -338,12 +379,10 @@ class _PeerDotState extends State<_PeerDot>
       duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
 
-    // Trigger entrance animation
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) {
-        setState(() {
-          _isVisible = true;
-        });
+        HapticFeedback.lightImpact(); // Haptic on discovery
+        setState(() => _isVisible = true);
       }
     });
   }
@@ -356,26 +395,22 @@ class _PeerDotState extends State<_PeerDot>
 
   @override
   Widget build(BuildContext context) {
-    final color =
-        widget.peer.isConnected ? AppTheme.green : AppTheme.radarDot;
+    final color = widget.peer.isConnected ? AppTheme.green : AppTheme.radarDot;
     final initial = widget.peer.name.isNotEmpty ? widget.peer.name[0] : '?';
 
     return AnimatedOpacity(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 400),
       opacity: _isVisible ? 1.0 : 0.0,
       curve: Curves.easeIn,
       child: AnimatedScale(
-        duration: const Duration(milliseconds: 500),
+        duration: const Duration(milliseconds: 400),
         scale: _isVisible ? 1.0 : 0.5,
         curve: Curves.easeOutBack,
         child: AnimatedBuilder(
           animation: _pulseController,
           builder: (context, child) {
             final scale = 1.0 + _pulseController.value * 0.15;
-            return Transform.scale(
-              scale: scale,
-              child: child,
-            );
+            return Transform.scale(scale: scale, child: child);
           },
           child: Container(
             width: 32,
@@ -395,11 +430,7 @@ class _PeerDotState extends State<_PeerDot>
             child: Center(
               child: Text(
                 initial,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
               ),
             ),
           ),
