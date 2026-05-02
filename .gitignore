@@ -1,0 +1,108 @@
+# ==============================================================================
+# TurboLink App - Comprehensive .gitignore
+# ==============================================================================
+
+# ─── Miscellaneous ────────────────────────────────────────────────────────────
+*.class
+*.log
+*.pyc
+*.swp
+*.lock.hcl
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# ─── IDE / Editor ─────────────────────────────────────────────────────────────
+# IntelliJ / Android Studio
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code (uncomment if you want to track launch configs)
+# .vscode/
+
+# Vim
+*.swp
+*.swo
+*~
+
+# ─── Flutter / Dart / Pub ─────────────────────────────────────────────────────
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+pubspec.lock
+
+# ─── Android ──────────────────────────────────────────────────────────────────
+/android/app/debug
+/android/app/profile
+/android/app/release
+/android/.gradle/
+/android/local.properties
+/android/key.properties
+/android/*.jks
+/android/*.keystore
+/android/app/build/
+/android/build/
+**/android/**/GeneratedPluginRegistrant.java
+
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+.gradletasknamecache
+
+# ─── iOS (future-proofing) ────────────────────────────────────────────────────
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+
+# ─── Kotlin / Native Backend ─────────────────────────────────────────────────
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# ─── Symbolication ────────────────────────────────────────────────────────────
+app.*.symbols
+
+# ─── Obfuscation ──────────────────────────────────────────────────────────────
+app.*.map.json
+
+# ─── Testing & Coverage ──────────────────────────────────────────────────────
+coverage/
+*.lcov
+test-results/
+
+# ─── OS Files ─────────────────────────────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ─── Environment / Secrets ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
