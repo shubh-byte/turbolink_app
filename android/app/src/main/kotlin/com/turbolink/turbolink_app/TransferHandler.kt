@@ -37,31 +37,30 @@ class TransferHandler(
 
     // ── EventChannel stream handlers ─────────────────────────────────
 
-    /** Per-transfer progress sink. */
-    val progressStreamHandler = object : EventChannel.StreamHandler {
-        var sink: EventChannel.EventSink? = null
+    private var progressSink: EventChannel.EventSink? = null
+    private var allTransfersSink: EventChannel.EventSink? = null
 
+    /** Per-transfer progress sink handler. */
+    val progressStreamHandler = object : EventChannel.StreamHandler {
         override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-            sink = events
+            progressSink = events
         }
 
         override fun onCancel(arguments: Any?) {
-            sink = null
+            progressSink = null
         }
     }
 
-    /** Full transfer-list sink ("all transfers"). */
+    /** Full transfer-list sink handler ("all transfers"). */
     val allTransfersStreamHandler = object : EventChannel.StreamHandler {
-        var sink: EventChannel.EventSink? = null
-
         override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-            sink = events
+            allTransfersSink = events
             // Emit current state immediately on subscribe.
             emitAllTransfers()
         }
 
         override fun onCancel(arguments: Any?) {
-            sink = null
+            allTransfersSink = null
         }
     }
 
@@ -138,7 +137,7 @@ class TransferHandler(
                     "speedBytesPerSec" to speedBps,
                     "status" to "active",
                 )
-                progressStreamHandler.sink?.success(progressMap)
+                progressSink?.success(progressMap)
             },
             onComplete = {
                 updateTransfer(transferId, 1.0, 0.0, "completed")
@@ -148,7 +147,7 @@ class TransferHandler(
                     "speedBytesPerSec" to 0.0,
                     "status" to "completed",
                 )
-                progressStreamHandler.sink?.success(completeMap)
+                progressSink?.success(completeMap)
                 Log.d(TAG, "[$transferId] Transfer complete")
             },
             onError = { errorMsg ->
@@ -160,7 +159,7 @@ class TransferHandler(
                     "status" to "failed",
                     "error" to errorMsg,
                 )
-                progressStreamHandler.sink?.success(errorMap)
+                progressSink?.success(errorMap)
                 Log.e(TAG, "[$transferId] Transfer failed: $errorMsg")
             },
         )
@@ -190,7 +189,7 @@ class TransferHandler(
 
     private fun emitAllTransfers() {
         activity.runOnUiThread {
-            allTransfersStreamHandler.sink?.success(transferList.toList())
+            allTransfersSink?.success(transferList.toList())
         }
     }
 
