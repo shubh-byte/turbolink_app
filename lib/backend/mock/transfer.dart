@@ -9,6 +9,14 @@ import '../services/transfer_service.dart';
 /// fully tested on Mac/Web without real file I/O.
 /// Speed is capped at 25 MB/s in demo mode so transfers are observable.
 class MockTransferService implements TransferService {
+  final double Function() getMinSpeed;
+  final double Function() getMaxSpeed;
+
+  MockTransferService({
+    required this.getMinSpeed,
+    required this.getMaxSpeed,
+  });
+
   final _random = Random();
   final List<Transfer> _transfers = [];
   final _transfersController = StreamController<List<Transfer>>.broadcast();
@@ -60,8 +68,10 @@ class MockTransferService implements TransferService {
         return;
       }
 
-      // Cap speed at 25 MB/s. Range: 2-25 MB/s for observable transfers.
-      final speedMbps = 2.0 + _random.nextDouble() * 23.0;
+      // Use dynamic min/max bounds from settings
+      final minSpeed = getMinSpeed();
+      final maxSpeed = getMaxSpeed();
+      final speedMbps = minSpeed + _random.nextDouble() * (maxSpeed - minSpeed);
       final speedBps = speedMbps * 1024 * 1024;
       final chunkBytes = speedBps * 0.1; // per 100ms tick
       currentState.progress += chunkBytes / currentState.fileSizeBytes;

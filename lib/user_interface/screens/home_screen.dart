@@ -219,7 +219,7 @@ class _BaseHomeScreenState extends ConsumerState<BaseHomeScreen>
     _isPickerActive = true;
     FilePickerResult? result;
     try {
-      result = await FilePicker.platform.pickFiles();
+      result = await FilePicker.pickFiles();
     } on PlatformException catch (e) {
       // The native file_picker delegate maintains its own `isActive` flag.
       // After a hot reload or if the previous picker's caching is still in
@@ -252,7 +252,7 @@ class _BaseHomeScreenState extends ConsumerState<BaseHomeScreen>
     // Use the official API to wipe the entire file_picker cache directory,
     // preventing permanent app storage bloat.
     if (isMock) {
-      FilePicker.platform.clearTemporaryFiles();
+      FilePicker.clearTemporaryFiles();
     }
 
     // Switch to TRANSFERS tab

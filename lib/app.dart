@@ -381,6 +381,66 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                             );
                           },
                         ),
+                        Consumer(
+                          builder: (context, ref, _) {
+                            final isMock = ref.watch(mockModeProvider);
+                            if (!isMock) return const SizedBox.shrink();
+
+                            final minSpeed = ref.watch(mockMinSpeedProvider);
+                            final maxSpeed = ref.watch(mockMaxSpeedProvider);
+                            final colors = BaseTheme.colors(context);
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: BaseTheme.spacingMd),
+                                  child: Text(
+                                    'MOCK TRANSFER SPEED',
+                                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                      color: colors.primaryGlow,
+                                      letterSpacing: 1.2,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.all(BaseTheme.spacingMd),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).cardTheme.color,
+                                    borderRadius: BorderRadius.circular(BaseTheme.radiusMd),
+                                    border: Border.all(color: Theme.of(context).dividerColor, width: 0.5),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text('${minSpeed.toInt()} MB/s', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
+                                          Text('${maxSpeed.toInt()} MB/s', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
+                                        ],
+                                      ),
+                                      RangeSlider(
+                                        values: RangeValues(minSpeed, maxSpeed),
+                                        min: 1.0,
+                                        max: 100.0,
+                                        divisions: 99,
+                                        activeColor: colors.primaryGlow,
+                                        inactiveColor: Theme.of(context).dividerColor,
+                                        onChanged: (RangeValues values) {
+                                          ref.read(mockMinSpeedProvider.notifier).state = values.start;
+                                          ref.read(mockMaxSpeedProvider.notifier).state = values.end;
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: BaseTheme.spacingLg),
+                              ],
+                            );
+                          },
+                        ),
                       ],
                     );
                   },

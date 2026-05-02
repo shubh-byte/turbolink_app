@@ -9,13 +9,21 @@ import 'mock_mode_provider.dart';
 /// Provides the active TransferService instance (Demo vs Release).
 final transferServiceProvider = Provider<TransferService>((ref) {
   final isMock = ref.watch(mockModeProvider);
-  if (isMock) return MockTransferService();
+  if (isMock) {
+    return MockTransferService(
+      getMinSpeed: () => ref.read(mockMinSpeedProvider),
+      getMaxSpeed: () => ref.read(mockMaxSpeedProvider),
+    );
+  }
   
   if (defaultTargetPlatform == TargetPlatform.android) {
     return NativeTransferService();
   }
   
-  return MockTransferService();
+  return MockTransferService(
+    getMinSpeed: () => ref.read(mockMinSpeedProvider),
+    getMaxSpeed: () => ref.read(mockMaxSpeedProvider),
+  );
 });
 
 /// Provides the stream of all transfers (active + completed) based on active mode.
