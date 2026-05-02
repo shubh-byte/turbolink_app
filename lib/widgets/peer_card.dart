@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../backend/models/peer.dart';
 import '../core/theme/app_theme.dart';
@@ -45,12 +46,12 @@ class PeerCard extends StatelessWidget {
         vertical: AppTheme.spacingXs,
       ),
       decoration: BoxDecoration(
-        color: peer.isConnected ? AppTheme.cyanDim : AppTheme.surfaceAlt,
+        color: peer.isConnected ? AppTheme.cyan.withValues(alpha: 0.1) : Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(
           color: peer.isConnected
               ? AppTheme.cyan.withValues(alpha: 0.3)
-              : AppTheme.border,
+              : Theme.of(context).dividerColor,
           width: peer.isConnected ? 1.0 : 0.5,
         ),
       ),
@@ -70,14 +71,14 @@ class PeerCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: peer.isConnected
                         ? AppTheme.cyan.withValues(alpha: 0.15)
-                        : AppTheme.surfaceElevated,
+                        : Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                   ),
                   child: Icon(
                     _deviceIcon,
                     color: peer.isConnected
                         ? AppTheme.cyan
-                        : AppTheme.textSecondary,
+                        : Theme.of(context).iconTheme.color,
                     size: 22,
                   ),
                 ),
@@ -93,7 +94,7 @@ class PeerCard extends StatelessWidget {
                         style: tt.titleMedium?.copyWith(
                           color: peer.isConnected
                               ? AppTheme.cyan
-                              : AppTheme.textPrimary,
+                              : Theme.of(context).colorScheme.onSurface,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -105,14 +106,7 @@ class PeerCard extends StatelessWidget {
 
                 // Action button.
                 if (isConnecting)
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppTheme.cyan,
-                    ),
-                  )
+                  const _HUDLoader()
                 else if (peer.isConnected)
                   _ActionChip(
                     label: 'SEND',
@@ -134,6 +128,92 @@ class PeerCard extends StatelessWidget {
   }
 }
 
+/// Custom HUD-themed loader for connecting state.
+class _HUDLoader extends StatefulWidget {
+  const _HUDLoader();
+
+  @override
+  State<_HUDLoader> createState() => _HUDLoaderState();
+}
+
+class _HUDLoaderState extends State<_HUDLoader> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return SizedBox(
+          width: 24,
+          height: 24,
+          child: CustomPaint(
+            painter: _HUDLoaderPainter(
+              progress: _controller.value,
+              color: AppTheme.cyan,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _HUDLoaderPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  _HUDLoaderPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    // Draw 3 rotating segments
+    for (var i = 0; i < 3; i++) {
+      final startAngle = (i * 2 * pi / 3) + (progress * 2 * pi);
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        pi / 3,
+        false,
+        paint,
+      );
+    }
+
+    // Draw inner pulsing dot
+    final dotPaint = Paint()
+      ..color = color.withValues(alpha: 0.5 + 0.5 * sin(progress * 2 * pi).abs())
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, 2, dotPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _HUDLoaderPainter oldDelegate) => true;
+}
+
 /// Tiny signal strength bar: 5 segments that fill based on [strength].
 class _SignalBar extends StatelessWidget {
   final double strength;
@@ -152,7 +232,7 @@ class _SignalBar extends StatelessWidget {
           decoration: BoxDecoration(
             color: active
                 ? AppTheme.cyan.withValues(alpha: 0.8)
-                : AppTheme.border,
+                : Theme.of(context).dividerColor,
             borderRadius: BorderRadius.circular(1),
           ),
         );

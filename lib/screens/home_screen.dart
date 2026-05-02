@@ -2,10 +2,12 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../backend/models/peer.dart';
 import '../core/di/service_locator.dart';
 import '../core/theme/app_theme.dart';
 import '../providers/discovery_provider.dart';
+import '../providers/navigation_provider.dart';
 import '../widgets/peer_card.dart';
 import '../widgets/radar_painter.dart';
 
@@ -60,6 +62,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       fileName: file.name,
       fileSizeBytes: file.size,
     );
+
+    // Switch to TRANSFERS tab to show progress
+    ref.read(navigationProvider.notifier).state = 1;
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'TRANSFER INITIATED: ${file.name}',
+            style: GoogleFonts.sourceCodePro(
+              color: AppTheme.cyan,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+          ),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.9),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            side: const BorderSide(color: AppTheme.cyan, width: 0.5),
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -150,7 +176,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         Container(
           height: 1,
           margin: const EdgeInsets.symmetric(horizontal: AppTheme.spacingXl),
-          color: AppTheme.border,
+          color: Theme.of(context).dividerColor,
         ),
 
         // ── Peer list header ─────────────────────────────────────────
@@ -172,7 +198,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: AppTheme.cyanDim,
+                    color: AppTheme.cyan.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -200,7 +226,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       Icon(
                         Icons.radar_rounded,
                         size: 40,
-                        color: AppTheme.textTertiary.withValues(alpha: 0.5),
+                        color: Theme.of(context).disabledColor.withValues(alpha: 0.5),
                       ),
                       const SizedBox(height: AppTheme.spacingSm),
                       Text(
@@ -302,6 +328,7 @@ class _PeerDot extends StatefulWidget {
 class _PeerDotState extends State<_PeerDot>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
+  bool _isVisible = false;
 
   @override
   void initState() {
@@ -310,6 +337,15 @@ class _PeerDotState extends State<_PeerDot>
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
+
+    // Trigger entrance animation
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        setState(() {
+          _isVisible = true;
+        });
+      }
+    });
   }
 
   @override
@@ -324,37 +360,47 @@ class _PeerDotState extends State<_PeerDot>
         widget.peer.isConnected ? AppTheme.green : AppTheme.radarDot;
     final initial = widget.peer.name.isNotEmpty ? widget.peer.name[0] : '?';
 
-    return AnimatedBuilder(
-      animation: _pulseController,
-      builder: (context, child) {
-        final scale = 1.0 + _pulseController.value * 0.15;
-        return Transform.scale(
-          scale: scale,
-          child: child,
-        );
-      },
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.2),
-          shape: BoxShape.circle,
-          border: Border.all(color: color.withValues(alpha: 0.6), width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.3),
-              blurRadius: 8,
-              spreadRadius: 1,
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 500),
+      opacity: _isVisible ? 1.0 : 0.0,
+      curve: Curves.easeIn,
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 500),
+        scale: _isVisible ? 1.0 : 0.5,
+        curve: Curves.easeOutBack,
+        child: AnimatedBuilder(
+          animation: _pulseController,
+          builder: (context, child) {
+            final scale = 1.0 + _pulseController.value * 0.15;
+            return Transform.scale(
+              scale: scale,
+              child: child,
+            );
+          },
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+              border: Border.all(color: color.withValues(alpha: 0.6), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Center(
-          child: Text(
-            initial,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+            child: Center(
+              child: Text(
+                initial,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ),
         ),

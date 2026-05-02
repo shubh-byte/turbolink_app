@@ -81,7 +81,7 @@ class AppTheme {
         onPrimary: surface,
         onSecondary: surface,
       ),
-      textTheme: _buildTextTheme(),
+      textTheme: _buildTextTheme(Brightness.dark),
       cardTheme: CardThemeData(
         color: surfaceAlt,
         elevation: 0,
@@ -135,66 +135,143 @@ class AppTheme {
     );
   }
 
-  static TextTheme _buildTextTheme() {
-    // Unbounded for display/headline — bold, technical, memorable.
-    // Source Code Pro for body/data — monospaced readability.
+  static ThemeData get lightTheme {
+    const Color lightSurface = Color(0xFFF5F5F7);
+    const Color lightSurfaceAlt = Color(0xFFFFFFFF);
+    const Color lightBorder = Color(0xFFD1D1D6);
+    const Color lightTextPrimary = Color(0xFF1D1D1F);
+    const Color lightTextSecondary = Color(0xFF86868B);
+    const Color lightNavy = Color(0xFF001D3D);
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: lightSurface,
+      colorScheme: const ColorScheme.light(
+        surface: lightSurface,
+        primary: cyan,
+        secondary: amber,
+        error: red,
+        onSurface: lightTextPrimary,
+        onPrimary: lightSurfaceAlt,
+        onSecondary: lightSurfaceAlt,
+      ),
+      textTheme: _buildTextTheme(Brightness.light),
+      cardTheme: CardThemeData(
+        color: lightSurfaceAlt,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusMd),
+          side: const BorderSide(color: lightBorder, width: 0.8),
+        ),
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleTextStyle: GoogleFonts.unbounded(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: lightTextPrimary,
+          letterSpacing: 0.5,
+        ),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: lightSurfaceAlt,
+        selectedItemColor: cyan,
+        unselectedItemColor: lightTextSecondary,
+        type: BottomNavigationBarType.fixed,
+        elevation: 4,
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: lightSurfaceAlt,
+        indicatorColor: cyan.withValues(alpha: 0.1),
+        surfaceTintColor: Colors.transparent,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return GoogleFonts.sourceCodePro(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: lightNavy,
+              letterSpacing: 1.2,
+            );
+          }
+          return GoogleFonts.sourceCodePro(
+            fontSize: 11,
+            fontWeight: FontWeight.w400,
+            color: lightTextSecondary,
+            letterSpacing: 1.0,
+          );
+        }),
+      ),
+      iconTheme: const IconThemeData(color: lightTextSecondary, size: 22),
+      dividerColor: lightBorder,
+    );
+  }
+
+  static TextTheme _buildTextTheme(Brightness brightness) {
+    final Color primary = brightness == Brightness.dark ? textPrimary : const Color(0xFF1D1D1F);
+    final Color secondary = brightness == Brightness.dark ? textSecondary : const Color(0xFF86868B);
+    final Color tertiary = brightness == Brightness.dark ? textTertiary : const Color(0xFFA1A1A6);
+
     return TextTheme(
       displayLarge: GoogleFonts.unbounded(
         fontSize: 36,
         fontWeight: FontWeight.w700,
-        color: textPrimary,
+        color: primary,
         letterSpacing: -0.5,
       ),
       displayMedium: GoogleFonts.unbounded(
         fontSize: 28,
         fontWeight: FontWeight.w600,
-        color: textPrimary,
+        color: primary,
         letterSpacing: 0,
       ),
       headlineLarge: GoogleFonts.unbounded(
         fontSize: 22,
         fontWeight: FontWeight.w600,
-        color: textPrimary,
+        color: primary,
         letterSpacing: 0.5,
       ),
       headlineMedium: GoogleFonts.unbounded(
         fontSize: 18,
         fontWeight: FontWeight.w500,
-        color: textPrimary,
+        color: primary,
         letterSpacing: 0.3,
       ),
       titleLarge: GoogleFonts.unbounded(
         fontSize: 15,
         fontWeight: FontWeight.w500,
-        color: textPrimary,
+        color: primary,
         letterSpacing: 0.5,
       ),
       titleMedium: GoogleFonts.sourceCodePro(
         fontSize: 14,
         fontWeight: FontWeight.w500,
-        color: textPrimary,
+        color: primary,
         letterSpacing: 0.3,
       ),
       titleSmall: GoogleFonts.sourceCodePro(
         fontSize: 12,
         fontWeight: FontWeight.w500,
-        color: textSecondary,
+        color: secondary,
         letterSpacing: 0.5,
       ),
       bodyLarge: GoogleFonts.sourceCodePro(
         fontSize: 14,
         fontWeight: FontWeight.w400,
-        color: textPrimary,
+        color: primary,
       ),
       bodyMedium: GoogleFonts.sourceCodePro(
         fontSize: 13,
         fontWeight: FontWeight.w400,
-        color: textSecondary,
+        color: secondary,
       ),
       bodySmall: GoogleFonts.sourceCodePro(
         fontSize: 11,
         fontWeight: FontWeight.w400,
-        color: textTertiary,
+        color: tertiary,
       ),
       labelLarge: GoogleFonts.sourceCodePro(
         fontSize: 13,
@@ -205,13 +282,13 @@ class AppTheme {
       labelMedium: GoogleFonts.sourceCodePro(
         fontSize: 11,
         fontWeight: FontWeight.w500,
-        color: textSecondary,
+        color: secondary,
         letterSpacing: 1.0,
       ),
       labelSmall: GoogleFonts.sourceCodePro(
         fontSize: 10,
         fontWeight: FontWeight.w400,
-        color: textTertiary,
+        color: tertiary,
         letterSpacing: 1.2,
       ),
     );

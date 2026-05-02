@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../backend/models/transfer.dart';
@@ -100,34 +101,19 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Animated icon with glow.
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: AppTheme.amberDim,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppTheme.amber.withValues(alpha: 0.2),
-                width: 1,
-              ),
-            ),
-            child: const Icon(
-              Icons.swap_vert_rounded,
-              color: AppTheme.amber,
-              size: 32,
-            ),
-          ),
+          // Technical HUD wireframe graphic
+          const _HUDWireframe(),
           const SizedBox(height: AppTheme.spacingLg),
           Text(
-            'No transfers yet',
+            'NO ACTIVE STREAMS',
             style: tt.headlineMedium?.copyWith(
-              color: AppTheme.textSecondary,
+              color: Theme.of(context).colorScheme.primary,
+              letterSpacing: 2,
             ),
           ),
           const SizedBox(height: AppTheme.spacingSm),
           Text(
-            'Connect to a peer and send a file\nto start your first transfer.',
+            'System idle. Connect to a peer node\nto begin data transmission.',
             style: tt.bodyMedium,
             textAlign: TextAlign.center,
           ),
@@ -135,6 +121,118 @@ class _EmptyState extends StatelessWidget {
       ),
     );
   }
+}
+
+class _HUDWireframe extends StatefulWidget {
+  const _HUDWireframe();
+
+  @override
+  State<_HUDWireframe> createState() => _HUDWireframeState();
+}
+
+class _HUDWireframeState extends State<_HUDWireframe> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return CustomPaint(
+          size: const Size(120, 120),
+          painter: _WireframePainter(
+            progress: _controller.value,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _WireframePainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  _WireframePainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 3;
+
+    // Draw hexagonal wireframe
+    final path = Path();
+    for (var i = 0; i < 6; i++) {
+      final angle = i * pi / 3;
+      final x = center.dx + radius * cos(angle);
+      final y = center.dy + radius * sin(angle);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    path.close();
+    canvas.drawPath(path, paint);
+
+    // Draw inner pulsing hexagon
+    final pulseRadius = radius * (0.5 + 0.3 * sin(progress * 2 * pi).abs());
+    final pulsePath = Path();
+    for (var i = 0; i < 6; i++) {
+      final angle = i * pi / 3 + progress * pi / 6;
+      final x = center.dx + pulseRadius * cos(angle);
+      final y = center.dy + pulseRadius * sin(angle);
+      if (i == 0) {
+        pulsePath.moveTo(x, y);
+      } else {
+        pulsePath.lineTo(x, y);
+      }
+    }
+    pulsePath.close();
+    canvas.drawPath(pulsePath, paint..color = color.withValues(alpha: 0.6));
+
+    // Draw outer segments
+    final outerRadius = radius * 1.5;
+    final segmentPaint = Paint()
+      ..color = color.withValues(alpha: 0.2 + 0.4 * progress)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    for (var i = 0; i < 3; i++) {
+      final startAngle = (i * 2 * pi / 3) + (progress * 2 * pi);
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: outerRadius),
+        startAngle,
+        pi / 4,
+        false,
+        segmentPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WireframePainter oldDelegate) => true;
 }
 
 /// Section header with title, count badge, and divider.
