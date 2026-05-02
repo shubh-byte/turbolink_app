@@ -12,7 +12,7 @@ class PeerCard extends StatelessWidget {
   final bool isConnecting;
   final VoidCallback onConnect;
   final VoidCallback onDisconnect;
-  final VoidCallback onSendFile;
+  final VoidCallback onOpen;
 
   const PeerCard({
     super.key,
@@ -20,7 +20,7 @@ class PeerCard extends StatelessWidget {
     this.isConnecting = false,
     required this.onConnect,
     required this.onDisconnect,
-    required this.onSendFile,
+    required this.onOpen,
   });
 
   IconData get _deviceIcon {
@@ -64,7 +64,7 @@ class PeerCard extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(BaseTheme.radiusMd),
-            onTap: isOutOfRange ? null : (peer.isConnected ? onSendFile : onConnect),
+            onTap: isOutOfRange ? null : (peer.isConnected ? onOpen : onConnect),
             child: Padding(
               padding: const EdgeInsets.all(BaseTheme.spacingMd),
               child: Row(
@@ -120,25 +120,10 @@ class PeerCard extends StatelessWidget {
                       onTap: () {},
                     )
                   else if (peer.isConnected)
-                    Flexible(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: _ActionChip(
-                              label: 'DISCONNECT',
-                              color: colors.error.withValues(alpha: 0.6),
-                              onTap: onDisconnect,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          _ActionChip(
-                            label: 'SEND',
-                            color: colors.secondaryGlow,
-                            onTap: onSendFile,
-                          ),
-                        ],
-                      ),
+                    _ActionChip(
+                      label: 'OPEN',
+                      color: colors.secondaryGlow,
+                      onTap: onOpen,
                     )
                   else
                     _ActionChip(

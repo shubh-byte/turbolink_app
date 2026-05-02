@@ -1,3 +1,4 @@
+import '../models/peer.dart';
 import '../models/transfer.dart';
 
 /// Abstract interface for file transfers.
@@ -16,6 +17,10 @@ abstract class TransferService {
 
   /// Get a stream of all active and recent transfers.
   Stream<List<Transfer>> getTransfers();
+
+  /// Instructs the service to start listening for incoming files from the given peer.
+  /// This is used in bidirectional connections.
+  void startListeningForFiles(Peer peer);
 
   /// Cancel an active transfer.
   Future<void> cancelTransfer(String transferId);

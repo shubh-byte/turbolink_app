@@ -3,10 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme_engine/base_theme.dart';
 import 'user_interface/screens/home_screen.dart';
-import 'user_interface/screens/transfer_screen.dart';
 import 'providers/theme_provider.dart';
 import 'providers/aesthetic_provider.dart';
-import 'providers/navigation_provider.dart';
 import 'providers/mock_mode_provider.dart';
 import 'providers/connectivity_provider.dart';
 import 'providers/settings_provider.dart';
@@ -55,10 +53,6 @@ class MainScaffold extends ConsumerStatefulWidget {
 }
 
 class _MainScaffoldState extends ConsumerState<MainScaffold> {
-  /// Returns the common screens. Theme controls the visual aesthetic entirely.
-  List<Widget> _getScreens(Aesthetic aesthetic) {
-    return const [BaseHomeScreen(), BaseTransferScreen()];
-  }
 
   void _showModeDialog() {
     showDialog(
@@ -456,8 +450,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    final currentIndex = ref.watch(navigationProvider);
-    final screens = _getScreens(widget.aesthetic);
     final colors = BaseTheme.colors(context);
 
     return PopScope(
@@ -553,35 +545,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
             ),
           ],
         ),
-        body: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: screens[currentIndex],
-        ),
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).bottomNavigationBarTheme.backgroundColor,
-            border: Border(
-              top: BorderSide(color: Theme.of(context).dividerColor, width: 0.5),
-            ),
-          ),
-          child: NavigationBar(
-            selectedIndex: currentIndex,
-            onDestinationSelected: (i) => ref.read(navigationProvider.notifier).state = i,
-            height: 64,
-            destinations: [
-              NavigationDestination(
-                icon: const Icon(Icons.radar_rounded),
-                selectedIcon: Icon(Icons.radar_rounded, color: colors.primaryGlow),
-                label: 'DISCOVER',
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.swap_vert_rounded),
-                selectedIcon: Icon(Icons.swap_vert_rounded, color: colors.primaryGlow),
-                label: 'TRANSFERS',
-              ),
-            ],
-          ),
-        ),
+        body: const BaseHomeScreen(),
       ),
     );
   }

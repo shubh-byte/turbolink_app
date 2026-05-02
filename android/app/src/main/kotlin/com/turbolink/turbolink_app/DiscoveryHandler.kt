@@ -89,6 +89,51 @@ class DiscoveryHandler(
                 result.success(true)
             }
 
+            "getConnectionInfo" -> {
+                // Used by Dart FFI to get the IP address of the peer to start the C++ UDP socket.
+                if (currentMode == "max_speed" && wifiDirectManager != null) {
+                    wifiDirectManager?.requestConnectionInfo { info ->
+                        if (info != null && info.groupOwnerAddress != null) {
+                            val ip = info.groupOwnerAddress.hostAddress
+                            val isServer = info.isGroupOwner
+                            
+                            val resultMap = mapOf(
+                                "ip" to ip,
+                                "port" to 42069, // Default UDP port
+                                "isServer" to isServer,
+                                "key" to null // Derived key placeholder
+                            )
+                            result.success(resultMap)
+                        } else {
+                            result.error("NO_CONNECTION", "No active P2P connection", null)
+                        }
+                    }
+                } else {
+                    // TODO: Implement Wi-Fi Aware IP resolution (requires NDP network request)
+                    result.error("NOT_SUPPORTED", "Aware IP resolution not fully implemented", null)
+                }
+            }
+
+            "openFileDescriptor" -> {
+                val uriStr = call.argument<String>("uri")
+                val mode = call.argument<String>("mode") ?: "r"
+                if (uriStr == null) {
+                    result.error("INVALID_ARG", "uri is required", null)
+                    return
+                }
+                try {
+                    val uri = android.net.Uri.parse(uriStr)
+                    val fd = activity.contentResolver.openFileDescriptor(uri, mode)
+                    if (fd != null) {
+                        result.success(fd.detachFd()) // Pass the raw int FD to Dart FFI
+                    } else {
+                        result.error("FD_ERROR", "Failed to open file descriptor", null)
+                    }
+                } catch (e: Exception) {
+                    result.error("FD_EXCEPTION", e.message, null)
+                }
+            }
+
             else -> result.notImplemented()
         }
     }

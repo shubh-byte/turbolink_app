@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../backend/models/transfer.dart';
 import '../backend/services/transfer_service.dart';
 import '../backend/mock/transfer.dart';
-import '../backend/services/transfer_android.dart';
+import '../backend/services/transfer_ffi.dart';
 import 'mock_mode_provider.dart';
 
 /// Provides the active TransferService instance (Demo vs Release).
@@ -17,7 +17,7 @@ final transferServiceProvider = Provider<TransferService>((ref) {
   }
   
   if (defaultTargetPlatform == TargetPlatform.android) {
-    return NativeTransferService();
+    return FfiTransferService();
   }
   
   return MockTransferService(

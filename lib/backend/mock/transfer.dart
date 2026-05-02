@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import '../models/peer.dart';
 import '../models/transfer.dart';
 import '../services/transfer_service.dart';
 
@@ -173,6 +174,35 @@ class MockTransferService implements TransferService {
     if (!_transfersController.isClosed) {
       _transfersController.add(List.unmodifiable(_transfers));
     }
+  }
+
+  @override
+  void startListeningForFiles(Peer peer) {
+    // In mock mode, we simulate an incoming file transfer randomly.
+    Timer(const Duration(seconds: 3), () {
+      final id = 'transfer_${_nextId++}';
+      final controller = StreamController<Transfer>();
+
+      var transfer = Transfer(
+        id: id,
+        fileName: 'Mock_Received_File.mkv',
+        fileSizeBytes: 1024 * 1024 * 500, // 500 MB
+        status: TransferStatus.active,
+        direction: TransferDirection.receiving,
+        peerId: peer.id,
+        peerName: peer.name,
+      );
+
+      _transfers.add(transfer);
+      _transferStates[id] = _TransferState(
+        progress: 0.0,
+        controller: controller,
+        fileSizeBytes: transfer.fileSizeBytes,
+      );
+      _emitTransfers();
+
+      _startTransferTimer(id);
+    });
   }
 }
 
