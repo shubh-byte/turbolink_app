@@ -8,6 +8,7 @@ import '../../core/theme_engine/base_theme.dart';
 import '../../providers/discovery_provider.dart';
 import '../../providers/transfer_provider.dart';
 import '../../providers/navigation_provider.dart';
+import '../../providers/mock_mode_provider.dart';
 import '../widgets/peer_card.dart';
 import '../widgets/radar_painter.dart';
 
@@ -25,6 +26,7 @@ class BaseHomeScreen extends ConsumerStatefulWidget {
 class _BaseHomeScreenState extends ConsumerState<BaseHomeScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _sweepController;
+  bool _isPickerActive = false;
 
   @override
   void initState() {
@@ -32,7 +34,10 @@ class _BaseHomeScreenState extends ConsumerState<BaseHomeScreen>
     _sweepController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
-    )..repeat();
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _sweepController.repeat();
+    });
   }
 
   @override
@@ -205,18 +210,50 @@ class _BaseHomeScreenState extends ConsumerState<BaseHomeScreen>
   }
 
   Future<void> _sendFileToPeer(Peer peer) async {
+    if (_isPickerActive) return;
+
+    // Capture colors before the async gap since context may not be valid after.
     final colors = BaseTheme.colors(context);
-    final result = await FilePicker.platform.pickFiles();
+    final isMock = ref.read(mockModeProvider);
+
+    _isPickerActive = true;
+    FilePickerResult? result;
+    try {
+      result = await FilePicker.platform.pickFiles();
+    } on PlatformException catch (e) {
+      // The native file_picker delegate maintains its own `isActive` flag.
+      // After a hot reload or if the previous picker's caching is still in
+      // progress on the native side, this flag stays true and the plugin
+      // rejects the call. Catch it gracefully instead of crashing.
+      debugPrint('[TurboLink] FilePicker error: ${e.code} - ${e.message}');
+      return;
+    } finally {
+      _isPickerActive = false;
+    }
+
+    // The await above can take 10-120+ seconds while the plugin caches a
+    // large video. The user may navigate away, disposing this widget.
+    // ALL ref.read() calls MUST be after this guard.
+    if (!mounted) return;
+
     if (result == null || result.files.isEmpty) return;
 
     final file = result.files.first;
+
     ref.read(transferServiceProvider).sendFile(
       peerId: peer.id,
       peerName: peer.name,
-      filePath: file.path ?? '',
+      fileUri: file.identifier ?? file.path ?? '',
       fileName: file.name,
       fileSizeBytes: file.size,
     );
+
+    // In mock mode, the cached file is never actually read by MockTransferService.
+    // Use the official API to wipe the entire file_picker cache directory,
+    // preventing permanent app storage bloat.
+    if (isMock) {
+      FilePicker.platform.clearTemporaryFiles();
+    }
 
     // Switch to TRANSFERS tab
     ref.read(navigationProvider.notifier).state = 1;

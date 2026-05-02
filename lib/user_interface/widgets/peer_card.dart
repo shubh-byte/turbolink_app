@@ -96,12 +96,13 @@ class PeerCard extends StatelessWidget {
                       children: [
                         Text(
                           peer.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: tt.titleMedium?.copyWith(
                             color: peer.isConnected
                                 ? colors.primaryGlow
                                 : Theme.of(context).colorScheme.onSurface.withValues(alpha: isOutOfRange ? 0.5 : 1.0),
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 6),
                         _SignalBar(strength: peer.signalStrength, activeColor: isOutOfRange ? Colors.grey : colors.primaryGlow),
@@ -118,19 +119,28 @@ class PeerCard extends StatelessWidget {
                       color: Colors.grey.withValues(alpha: 0.5),
                       onTap: () {},
                     )
-                  else if (peer.isConnected) ...[
-                    _ActionChip(
-                      label: 'DISCONNECT',
-                      color: colors.error.withValues(alpha: 0.6),
-                      onTap: onDisconnect,
-                    ),
-                    const SizedBox(width: 8),
-                    _ActionChip(
-                      label: 'SEND',
-                      color: colors.secondaryGlow,
-                      onTap: onSendFile,
-                    ),
-                  ] else
+                  else if (peer.isConnected)
+                    Flexible(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: _ActionChip(
+                              label: 'DISCONNECT',
+                              color: colors.error.withValues(alpha: 0.6),
+                              onTap: onDisconnect,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _ActionChip(
+                            label: 'SEND',
+                            color: colors.secondaryGlow,
+                            onTap: onSendFile,
+                          ),
+                        ],
+                      ),
+                    )
+                  else
                     _ActionChip(
                       label: 'LINK',
                       color: colors.primaryGlow,
@@ -287,6 +297,8 @@ class _ActionChip extends StatelessWidget {
         ),
         child: Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 color: color,
                 fontSize: 11,

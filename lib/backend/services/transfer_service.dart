@@ -9,7 +9,7 @@ abstract class TransferService {
   Stream<Transfer> sendFile({
     required String peerId,
     required String peerName,
-    required String filePath,
+    required String fileUri,
     required String fileName,
     required int fileSizeBytes,
   });

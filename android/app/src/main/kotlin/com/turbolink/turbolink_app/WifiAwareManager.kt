@@ -13,6 +13,7 @@ import android.net.wifi.aware.PublishDiscoverySession
 import android.net.wifi.aware.SubscribeConfig
 import android.net.wifi.aware.SubscribeDiscoverySession
 import android.net.wifi.aware.WifiAwareManager
+import android.net.wifi.aware.WifiAwareNetworkSpecifier
 import android.net.wifi.aware.WifiAwareSession
 import android.os.Build
 import android.util.Log
@@ -31,7 +32,7 @@ import kotlinx.coroutines.launch
  *  1. Attach to the Wi-Fi Aware system service
  *  2. Publish a "turbolink" service and simultaneously subscribe
  *  3. On service discovered → add peer to the list
- *  4. On connect → create a NetworkSpecifier → request network
+ *  4. On connect → create a secure NetworkSpecifier with PSK → request network
  */
 class WifiAwareManagerWrapper(
     private val context: Context,
@@ -43,7 +44,8 @@ class WifiAwareManagerWrapper(
         private const val TAG = "WifiAwareManager"
         private const val SERVICE_NAME = "turbolink"
         // WPA2/WPA3 passphrase for the NAN Data Path (NDP).
-        private const val PASSPHRASE = "turbolink_secure_nan_transfer_2026"
+        // Must be 8-63 ASCII characters per WPA2-PSK spec.
+        private const val NDP_PASSPHRASE = "turbolink_secure_nan_transfer_2026"
     }
 
     private val awareManager: WifiAwareManager? =
@@ -56,24 +58,24 @@ class WifiAwareManagerWrapper(
     // ── Public API ───────────────────────────────────────────────────
 
     /**
-     * Creates a secure [NetworkSpecifier] to establish an NDP with the peer.
-     * Uses WPA2/WPA3 PSK security as requested.
+     * Creates a **secure** [NetworkSpecifier] to establish an NDP with the peer.
+     *
+     * Uses [WifiAwareNetworkSpecifier.Builder] with [setPskPassphrase] to
+     * enforce WPA2/WPA3 encryption on the data link. This complies with
+     * GEMINI.md Rule 26 which mandates encrypted P2P connections.
+     *
+     * The server (publisher) and client (subscriber) must use the same
+     * passphrase for the NDP handshake to succeed.
      */
     fun createDataPathSpecifier(peerId: String, isServer: Boolean): NetworkSpecifier? {
-        val session = awareSession ?: return null
         val peerHandle = getPeerHandle(peerId) ?: return null
 
-        return if (isServer) {
-            publishSession?.createNetworkSpecifierOpen(peerHandle) // Base specifier
-        } else {
-            subscribeSession?.createNetworkSpecifierOpen(peerHandle)
-        }?.let { 
-            // In a real production app, we would use createNetworkSpecifierPsk
-            // but for simplicity and maximum hardware compatibility in this 
-            // student project, we ensure the link is managed by the Aware session.
-            // Note: Android 12+ supports WPA3-SAE on NAN if hardware allows.
-            it
-        }
+        val discoverySession = if (isServer) publishSession else subscribeSession
+        discoverySession ?: return null
+
+        return WifiAwareNetworkSpecifier.Builder(discoverySession, peerHandle)
+            .setPskPassphrase(NDP_PASSPHRASE)
+            .build()
     }
 
     private val discoveredPeers = mutableMapOf<String, PeerInfo>()

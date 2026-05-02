@@ -1,6 +1,12 @@
 package com.turbolink.turbolink_app
 
+import android.content.ContentValues
+import android.content.Context
+import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.os.ParcelFileDescriptor
+import android.provider.MediaStore
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -9,12 +15,15 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.io.RandomAccessFile
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Zero-Copy file transfer engine using [FileChannel.transferTo] and
@@ -31,7 +40,10 @@ import java.nio.channels.SocketChannel
  * This class is stateless per-transfer. Each send/receive call creates its
  * own NIO channels and cleans them up when done.
  */
-class FileTransferEngine(private val scope: CoroutineScope) {
+class FileTransferEngine(
+    private val context: Context,
+    private val scope: CoroutineScope
+) {
 
     companion object {
         private const val TAG = "FileTransferEngine"
@@ -40,14 +52,15 @@ class FileTransferEngine(private val scope: CoroutineScope) {
     }
 
     // Active transfer jobs, keyed by transferId.
-    private val activeJobs = mutableMapOf<String, Job>()
+    // ConcurrentHashMap: written from Dispatchers.IO, read from Dispatchers.Main.
+    private val activeJobs = ConcurrentHashMap<String, Job>()
 
     /**
      * Send a file to a peer. Opens a [ServerSocketChannel], waits for the
      * receiver to connect, then streams the file using Zero-Copy I/O.
      *
      * @param transferId  Unique ID for this transfer.
-     * @param filePath    Absolute path to the file to send.
+     * @param fileUri     Android Content URI of the file to send.
      * @param fileName    Display name of the file.
      * @param fileSizeBytes  Size of the file in bytes.
      * @param peerAddress IP address of the receiving peer.
@@ -59,7 +72,7 @@ class FileTransferEngine(private val scope: CoroutineScope) {
      */
     fun sendFile(
         transferId: String,
-        filePath: String,
+        fileUri: String,
         fileName: String,
         fileSizeBytes: Long,
         peerAddress: String?,
@@ -100,37 +113,40 @@ class FileTransferEngine(private val scope: CoroutineScope) {
                 }
 
                 // 4. Zero-Copy transfer using FileChannel.transferTo().
-                val raf = RandomAccessFile(filePath, "r")
-                fileChannel = raf.channel
-                var position = 0L
-                var lastTime = System.nanoTime()
-                var lastBytes = 0L
+                val uri = Uri.parse(fileUri)
+                context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                    fileChannel = FileInputStream(pfd.fileDescriptor).channel
+                    
+                    var position = 0L
+                    var lastTime = System.nanoTime()
+                    var lastBytes = 0L
 
-                while (position < fileSizeBytes && isActive) {
-                    val toTransfer = minOf(CHUNK_SIZE, fileSizeBytes - position)
+                    while (position < fileSizeBytes && isActive) {
+                        val toTransfer = minOf(CHUNK_SIZE, fileSizeBytes - position)
 
-                    // transferTo() uses sendfile(2) — zero user-space copies.
-                    val transferred = fileChannel.transferTo(
-                        position, toTransfer, clientChannel,
-                    )
+                        // transferTo() uses sendfile(2) — zero user-space copies.
+                        val transferred = fileChannel!!.transferTo(
+                            position, toTransfer, clientChannel,
+                        )
 
-                    position += transferred
+                        position += transferred
 
-                    // Calculate speed every chunk.
-                    val now = System.nanoTime()
-                    val elapsed = (now - lastTime) / 1_000_000_000.0
-                    val bytesDelta = position - lastBytes
-                    val speed = if (elapsed > 0) bytesDelta / elapsed else 0.0
+                        // Calculate speed every chunk.
+                        val now = System.nanoTime()
+                        val elapsed = (now - lastTime) / 1_000_000_000.0
+                        val bytesDelta = position - lastBytes
+                        val speed = if (elapsed > 0) bytesDelta / elapsed else 0.0
 
-                    lastTime = now
-                    lastBytes = position
+                        lastTime = now
+                        lastBytes = position
 
-                    withContext(Dispatchers.Main) {
-                        onProgress(position, fileSizeBytes, speed)
+                        withContext(Dispatchers.Main) {
+                            onProgress(position, fileSizeBytes, speed)
+                        }
                     }
-                }
+                    Log.d(TAG, "[$transferId] Send complete: $position bytes")
+                } ?: throw Exception("Failed to open file descriptor for URI: $fileUri")
 
-                Log.d(TAG, "[$transferId] Send complete: $position bytes")
                 withContext(Dispatchers.Main) { onComplete() }
 
             } catch (e: Exception) {
@@ -140,6 +156,7 @@ class FileTransferEngine(private val scope: CoroutineScope) {
                 }
             } finally {
                 fileChannel?.close()
+                // fd is automatically closed when the FileInputStream/FileChannel is closed
                 clientChannel?.close()
                 serverChannel?.close()
                 activeJobs.remove(transferId)
@@ -160,7 +177,8 @@ class FileTransferEngine(private val scope: CoroutineScope) {
      * Receive a file from a peer. Connects to the sender's server socket,
      * reads the header, then writes the payload using Zero-Copy I/O.
      *
-     * Files are saved to Downloads/TurboLink/.
+     * On API 29+ (scoped storage), files are written via [MediaStore] to
+     * avoid SecurityException. On older APIs, falls back to direct file I/O.
      */
     fun receiveFile(
         transferId: String,
@@ -173,6 +191,8 @@ class FileTransferEngine(private val scope: CoroutineScope) {
         val job = scope.launch(Dispatchers.IO) {
             var socketChannel: SocketChannel? = null
             var fileChannel: FileChannel? = null
+            var outputUri: Uri? = null
+            var pfd: ParcelFileDescriptor? = null
 
             try {
                 // 1. Connect to the sender's server socket.
@@ -199,17 +219,37 @@ class FileTransferEngine(private val scope: CoroutineScope) {
 
                 Log.d(TAG, "[$transferId] Receiving: $fileName ($fileSize bytes)")
 
-                // 3. Create the output file.
-                val dir = File(
-                    Environment.getExternalStoragePublicDirectory(
-                        Environment.DIRECTORY_DOWNLOADS
-                    ),
-                    DOWNLOADS_DIR,
-                )
-                dir.mkdirs()
-                val outFile = File(dir, fileName)
-                val raf = RandomAccessFile(outFile, "rw")
-                fileChannel = raf.channel
+                // 3. Create the output file via MediaStore (scoped storage safe).
+                val mimeType = guessMimeType(fileName)
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    // API 29+: Use MediaStore to write into Downloads/TurboLink/.
+                    val values = ContentValues().apply {
+                        put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                        put(MediaStore.Downloads.MIME_TYPE, mimeType)
+                        put(MediaStore.Downloads.RELATIVE_PATH,
+                            "${Environment.DIRECTORY_DOWNLOADS}/$DOWNLOADS_DIR")
+                        put(MediaStore.Downloads.IS_PENDING, 1)
+                    }
+                    outputUri = context.contentResolver.insert(
+                        MediaStore.Downloads.EXTERNAL_CONTENT_URI, values
+                    ) ?: throw Exception("Failed to create MediaStore entry for: $fileName")
+
+                    pfd = context.contentResolver.openFileDescriptor(outputUri, "rw")
+                        ?: throw Exception("Failed to open PFD for writing: $outputUri")
+                    fileChannel = FileOutputStream(pfd.fileDescriptor).channel
+                } else {
+                    // API < 29: Direct file I/O is still allowed.
+                    val dir = File(
+                        Environment.getExternalStoragePublicDirectory(
+                            Environment.DIRECTORY_DOWNLOADS
+                        ),
+                        DOWNLOADS_DIR,
+                    )
+                    dir.mkdirs()
+                    val outFile = File(dir, fileName)
+                    fileChannel = RandomAccessFile(outFile, "rw").channel
+                }
 
                 // 4. Zero-Copy receive using FileChannel.transferFrom().
                 var position = 0L
@@ -238,22 +278,57 @@ class FileTransferEngine(private val scope: CoroutineScope) {
                     }
                 }
 
-                Log.d(TAG, "[$transferId] Receive complete: ${outFile.absolutePath}")
-                withContext(Dispatchers.Main) { onComplete(outFile.absolutePath) }
+                // 5. Mark the MediaStore entry as complete (clears IS_PENDING).
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && outputUri != null) {
+                    val doneValues = ContentValues().apply {
+                        put(MediaStore.Downloads.IS_PENDING, 0)
+                    }
+                    context.contentResolver.update(outputUri, doneValues, null, null)
+                }
+
+                val savedPath = outputUri?.toString()
+                    ?: "${Environment.getExternalStoragePublicDirectory(
+                        Environment.DIRECTORY_DOWNLOADS
+                    )}/$DOWNLOADS_DIR/$fileName"
+                Log.d(TAG, "[$transferId] Receive complete: $savedPath")
+                withContext(Dispatchers.Main) { onComplete(savedPath) }
 
             } catch (e: Exception) {
                 Log.e(TAG, "[$transferId] Receive failed", e)
+                // Clean up partial MediaStore entry on failure.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && outputUri != null) {
+                    try { context.contentResolver.delete(outputUri, null, null) }
+                    catch (_: Exception) { /* best-effort cleanup */ }
+                }
                 withContext(Dispatchers.Main) {
                     onError(e.message ?: "Unknown error")
                 }
             } finally {
                 fileChannel?.close()
+                pfd?.close()
                 socketChannel?.close()
                 activeJobs.remove(transferId)
             }
         }
 
         activeJobs[transferId] = job
+    }
+
+    /** Best-effort MIME type guess from file extension. */
+    private fun guessMimeType(fileName: String): String {
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+        return when (ext) {
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "gif" -> "image/gif"
+            "mp4" -> "video/mp4"
+            "mkv" -> "video/x-matroska"
+            "mp3" -> "audio/mpeg"
+            "pdf" -> "application/pdf"
+            "zip" -> "application/zip"
+            "apk" -> "application/vnd.android.package-archive"
+            else -> "application/octet-stream"
+        }
     }
 
     /** Cancel an active transfer by ID. */

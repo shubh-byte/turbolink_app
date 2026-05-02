@@ -30,7 +30,7 @@ class TransferHandler(
         private const val TAG = "TransferHandler"
     }
 
-    private val engine = FileTransferEngine(scope)
+    private val engine = FileTransferEngine(activity, scope)
 
     // Master list of all transfers (active + completed).
     private val transferList = mutableListOf<Map<String, Any>>()
@@ -71,17 +71,17 @@ class TransferHandler(
             "sendFile" -> {
                 val peerId = call.argument<String>("peerId") ?: ""
                 val peerName = call.argument<String>("peerName") ?: ""
-                val filePath = call.argument<String>("filePath") ?: ""
+                val fileUri = call.argument<String>("fileUri") ?: ""
                 val fileName = call.argument<String>("fileName") ?: ""
                 val fileSizeBytes = call.argument<Number>("fileSizeBytes")?.toLong() ?: 0L
 
-                if (filePath.isBlank() || fileName.isBlank()) {
-                    result.error("INVALID_ARG", "filePath and fileName required", null)
+                if (fileUri.isBlank() || fileName.isBlank()) {
+                    result.error("INVALID_ARG", "fileUri and fileName required", null)
                     return
                 }
 
                 val transferId = UUID.randomUUID().toString()
-                startSend(transferId, peerId, peerName, filePath, fileName, fileSizeBytes)
+                startSend(transferId, peerId, peerName, fileUri, fileName, fileSizeBytes)
                 result.success(transferId)
             }
 
@@ -101,7 +101,7 @@ class TransferHandler(
         transferId: String,
         peerId: String,
         peerName: String,
-        filePath: String,
+        fileUri: String,
         fileName: String,
         fileSizeBytes: Long,
     ) {
@@ -122,7 +122,7 @@ class TransferHandler(
 
         engine.sendFile(
             transferId = transferId,
-            filePath = filePath,
+            fileUri = fileUri,
             fileName = fileName,
             fileSizeBytes = fileSizeBytes,
             peerAddress = null, // Will be resolved by the P2P connection info.
